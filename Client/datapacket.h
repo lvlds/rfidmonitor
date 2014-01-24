@@ -70,7 +70,8 @@ enum Flags
     KMAC = 0x80,
     KID = 0x100,
     KTimeOuts = 0x200,
-    KSynchronizeAll = 0x400
+    KSynchronizeAll = 0x400,
+    KGeneralInfo = 0x800
 };
 
 typedef struct sDataPacket

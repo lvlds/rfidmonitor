@@ -1,8 +1,11 @@
 #include <QTcpSocket>
 #include <QHostAddress>
+#include <QTimer>
+#include <QNetworkInterface>
+
 #include <cmath>
 #include <stdlib.h>
-#include <QTimer>
+#include <string.h>
 
 #include "tcpclient.h"
 #include "datapacket.h"
@@ -16,6 +19,8 @@ TcpClient::TcpClient(QObject *parent) :
     connect(m_socket, SIGNAL(disconnected()), SLOT(disconnected()));
     connect(m_socket, SIGNAL(stateChanged(QAbstractSocket::SocketState)), SLOT(handleStateChanged(QAbstractSocket::SocketState)));
     connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(handleError(QAbstractSocket::SocketError)));
+
+
 }
 
 void TcpClient::start()
@@ -185,14 +190,69 @@ void TcpClient::sendRandomClientPacket()
     */
     // 9 items
     int messageType[] = {0x55000000, 0xAA000000};
-    int clientFlags[] = {0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x400};
+//    int clientFlags[] = {0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x400};
+    int setFlags[] = {0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200}; // 8
+    int requestFlags[] = {0x10, 0x100}; // 2
 
     int index = rand() % 2;
 
     if((messageType[index] & KRequest) == KRequest){
+        // the client can ask for date & time when the system is starting up
+        index = rand()%2;
+        switch (requestFlags[index]) {
+        case KID:
 
+            break;
+        case KDateTime:
+
+            break;
+        case KData:
+        case KTimeOuts:
+        case KTemperature:
+        case KIPAddress:
+        case KName:
+        case KMAC:
+        case KSynchronizeAll:
+            break;
+        default:
+            qDebug() << "Unknown request";
+            break;
+        }
     }else{
+        index = rand() % 8;
+        switch (requestFlags[index]) {
+        case KData:
+            //
 
+            break;
+        case KTemperature:
+
+            break;
+        case KDateTime:
+
+            break;
+        case KIPAddress:
+
+            break;
+        case KName:
+
+            break;
+        case KMAC:
+
+            break;
+        case KID:
+
+            break;
+        case KTimeOuts:
+
+            break;
+        case KSynchronizeAll:
+
+            break;
+        default:
+            qDebug() << "Unknown request";
+            break;
+        }
     }
 }
 
@@ -222,6 +282,187 @@ void TcpClient::handleError(QAbstractSocket::SocketError socketError)
     }
 }
 
+void TcpClient::syncData()
+{
+    qDebug() << "Send \"Data\" to Server";
+    /*
+        *  - flags (KSet = 0xAA000000, KData = 0x4)
+        *  - idSender
+        *  - name
+        *  - temperature
+        *  - datetime
+        *  - MessageUnion.dataSize
+        *  - MessageBlock
+        *
+    */
+    ClientPacketHeader header;
+    header.flags = KSet | KData;
+    header.idsender = m_testClient.id;
+    memcpy(header.name, m_testClient.name, 24);
+    header.temperature = m_testClient.temperature;
+    header.dateTime = get_date(m_testClient.dateTime);
+
+
+    // create random data
+    QList<RfidData> randomData;
+
+    int quantity = rand() % 900 + 125;
+    qDebug() << QString("Quantity = %1").append(quantity);
+
+    for(int i = 0; i < quantity; i++) {
+        RfidData data;
+        data.id = i + 1;
+        data.idpontocoleta = rand() % 10 + 1;
+        data.idantena = rand() % 3 + 1;
+        data.identificationcode = rand() % 1000 + 1;
+        data.applicationcode = rand() % 10000000 + 250000;
+        data.dateTime = get_date(QDateTime::currentDateTime());
+        randomData.append(data);
+    }
+
+    header.MessageUnion.dataSize= randomData.size();
+
+    quint64 bufferSize = sizeof(ClientPacketHeader) + randomData.size()*sizeof(RfidData);
+    char dataBuffer[bufferSize];
+
+    // save the ClientPacketHeader
+    memcpy(dataBuffer, &header, sizeof(ClientPacketHeader));
+
+    int offset = sizeof(ClientPacketHeader);
+    foreach (const RfidData &d, randomData) {
+        int index = randomData.indexOf(d);
+        memcpy(&(dataBuffer[offset + index*sizeof(RfidData)]), (char *)&d, sizeof(RfidData));
+    }
+
+    if(m_socket){
+        qint64 bytes = m_socket->write(dataBuffer, bufferSize);
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(bufferSize);
+    }
+}
+
+void TcpClient::syncTemperature()
+{
+    qDebug() << "Send \"Temperature\" to Server";
+    /*
+        *  - flags (KSet = 0xAA000000, KData = 0x4)
+        *  - idSender
+        *  - name
+        *  - temperature
+        *  - datetime
+        *  - MessageUnion.dataSize
+        *
+    */
+    ClientPacketHeader header;
+    header.flags = KSet | KData;
+    header.idsender = m_testClient.id;
+    memcpy(header.name, m_testClient.name, 24);
+    header.temperature = m_testClient.temperature;
+    header.dateTime = get_date(m_testClient.dateTime);
+    header.MessageUnion.dataSize = 0;
+
+    if(m_socket){
+        qint64 bytes = m_socket->write(&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(bufferSize);
+    }
+}
+
+void TcpClient::syncDateTime()
+{
+    qDebug() << "Send \"Date & Time\" to Server";
+}
+
+void TcpClient::syncIPAddress()
+{
+    qDebug() << "Send \"IP Address\" to Server";
+}
+
+void TcpClient::syncName()
+{
+    qDebug() << "Send \"Name\" to Server";
+
+}
+
+void TcpClient::syncMAC()
+{
+    qDebug() << "Send \"MAC\" to Server";
+    /*
+        *  - flags (KSet = 0xAA000000, KData = 0x4)
+        *  - idSender
+        *  - name
+        *  - temperature
+        *  - datetime
+        *  - MessageUnion.dataSize
+        *
+    */
+    ClientPacketHeader header;
+    header.flags = KSet | KData;
+    header.idsender = m_testClient.id;
+    memcpy(header.name, m_testClient.name, 24);
+    header.temperature = m_testClient.temperature;
+    header.dateTime = get_date(m_testClient.dateTime);
+
+    QString macAddress = QNetworkInterface::hardwareAddress();
+    macAddress = macAddress.remove(":");
+    memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
+
+    if(m_socket){
+        qint64 bytes = m_socket->write(&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(bufferSize);
+    }
+}
+
+void TcpClient::syncID()
+{
+    qDebug() << "Send \"ID\" to Server";
+}
+
+void TcpClient::syncTimeouts()
+{
+    qDebug() << "Send \"Reading & Synchronization Timeout\" to Server";
+}
+
+void TcpClient::syncAll()
+{
+    qDebug() << "Send \"Data, Temperature, Date & Time, IP Address, MAC, ID and Timeouts\" to Server";
+}
+
+void TcpClient::syncGeneralInfo()
+{
+    qDebug() << "Send \"Temperature\" to Server";
+    /*
+        *  - flags (KSet = 0xAA000000, KData = 0x4)
+        *  - idSender
+        *  - name
+        *  - temperature
+        *  - datetime
+        *  - MessageUnion.dataSize
+        *
+    */
+    ClientPacketHeader header;
+    header.flags = KSet | KData;
+    header.idsender = m_testClient.id;
+    memcpy(header.name, m_testClient.name, 24);
+    header.temperature = m_testClient.temperature;
+    header.dateTime = get_date(m_testClient.dateTime);
+
+    QString macAddress = QNetworkInterface::hardwareAddress();
+    macAddress = macAddress.remove(":");
+    memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
+
+    if(m_socket){
+        qint64 bytes = m_socket->write(&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(bufferSize);
+    }
+}
+
+void TcpClient::createTestClient()
+{
+    srand(time(NULL));
+    m_testClient.id = rand() % 100;
+    m_testClient.dateTime = QDateTime::currentDateTime();
+    sprintf(m_testClient.name, "Ponto de Coleta N %d", m_testClient.id);
+}
+
 void TcpClient::readyRead()
 {
     QByteArray received = m_socket->readAll();
@@ -242,6 +483,7 @@ void TcpClient::readyRead()
             KID = 0x100,
             KTimeOuts = 0x200,
             KSynchronizeAll = 0x400
+            KGeneralInfo = 0x800
         */
         if((serverHeader->flags & KRequest) == KRequest){
             // The server sent a message that needs to be answered with some information
@@ -249,30 +491,40 @@ void TcpClient::readyRead()
             switch (option) {
             case KData:
                 // schedule synchronization of data
+                syncData();
                 break;
             case KTemperature:
                 // schedule to send temperature
+                syncTemperature();
                 break;
             case KDateTime:
                 // Update time of the Reading Point
+                syncDateTime();
                 break;
             case KIPAddress:
                 // Send IP Address
+                syncIPAddress();
                 break;
             case KName:
                 // Send Name
+                syncName();
                 break;
             case KMAC:
                 // Send MAC Address
+                syncMAC();
                 break;
             case KID:
                 // Change ID of the Reading Point
+                syncID();
                 break;
             case KTimeOuts:
                 // Change Timeouts for Reading and Synchronization
+                syncTimeouts();
                 break;
             case KSynchronizeAll:
                 // Synchronize With Server
+
+                syncAll();
                 break;
             default:
                 qDebug() << "Unknown request";
