@@ -24,11 +24,9 @@ public:
 signals:
 
 public slots:
-    void start();
+    void start(const QString &server);
 
     void readyRead();
-    void sendRandomData();
-    void sendRandomDataNewDataPacket();
     void sendRandomClientPacket();
 
     void connected();

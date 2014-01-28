@@ -23,57 +23,9 @@ TcpClient::TcpClient(QObject *parent) :
 
 }
 
-void TcpClient::start()
+void TcpClient::start(const QString &server)
 {
-    m_socket->connectToHost("localhost", 9999);
-}
-
-void TcpClient::sendRandomData()
-{
-    srand(time_t(NULL));
-
-    DataPacket packet;
-    packet.idBlock = 14;
-    packet.startId = rand() % 10500 + 1000;
-    packet.endId = rand() % 10500 + 1000;
-    packet.idReading = rand() % 10500 + 1000;
-    packet.size = 0;
-    memset(packet.data, 0, PACKET_DATA_SIZE);
-
-    QList<RfidData> randomData;
-
-    for(int i = 0; i < 400; i++) {
-        RfidData data;
-        data.id = i + 1;
-        data.idpontocoleta = rand() % 10 + 1;
-        data.idantena = rand() % 3 + 1;
-        data.identificationcode = rand() % 1000 + 1;
-        data.applicationcode = rand() % 10000000 + 250000;
-        data.dateTime = get_date(QDateTime::currentDateTime());
-        randomData.append(data);
-    }
-
-    packet.size = randomData.size();
-
-    foreach (const RfidData &d, randomData) {
-        int index = randomData.indexOf(d);
-
-        memcpy(&(packet.data[index*sizeof(RfidData)]), (char *)&d, sizeof(RfidData));
-        char retrievied[64];
-        memcpy(retrievied, &(packet.data[index*sizeof(RfidData)]), sizeof(RfidData));
-
-        RfidData *rt1 = reinterpret_cast<RfidData *>(retrievied);
-        if(rt1){
-            QDateTime dateTime(get_date(rt1->dateTime));
-            qDebug() << QString("id = %1, appcode = %2, idcode = %3, datetime = %4").arg(rt1->id).arg(rt1->applicationcode).arg(rt1->identificationcode).arg(dateTime.toString());
-        }
-    }
-
-    if(m_socket){
-        qint64 bytes = m_socket->write((char *)&packet, (qint64)sizeof(DataPacket));
-        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg((qint64)sizeof(DataPacket));
-        QTimer::singleShot(10000, this, SLOT(sendRandomData()));
-    }
+    m_socket->connectToHost(server, 9999);
 }
 
 QString state_string(int socketState){
@@ -107,72 +59,6 @@ QString state_string(int socketState){
     return state;
 }
 
-
-void TcpClient::sendRandomDataNewDataPacket()
-{
-    int state = m_socket->state();
-    QString statestr = state_string(state);
-
-
-
-    if(m_socket->state() == QAbstractSocket::ConnectedState){
-        srand(time_t(NULL));
-
-        tDataPacket packet;
-        packet.flags = KData;
-        packet.idsender = rand() % 10 + 1;
-        memcpy(packet.name, "CANAL PIRACEMA", strlen("CANAL PIRACEMA"));
-        packet.dateTime = get_date(QDateTime::currentDateTime());
-        packet.temperature = 29.6;
-        packet.dataSize = 0;
-
-        QList<RfidData> randomData;
-
-        int quantity = rand() % 900 + 125;
-        qDebug() << QString("Quantity = %1").append(quantity);
-
-        for(int i = 0; i < quantity; i++) {
-            RfidData data;
-            data.id = i + 1;
-            data.idpontocoleta = rand() % 10 + 1;
-            data.idantena = rand() % 3 + 1;
-            data.identificationcode = rand() % 1000 + 1;
-            data.applicationcode = rand() % 10000000 + 250000;
-            data.dateTime = get_date(QDateTime::currentDateTime());
-            randomData.append(data);
-        }
-
-        packet.dataSize= randomData.size();
-
-        quint64 bufferSize = sizeof(tDataPacket) + randomData.size()*sizeof(RfidData);
-        char dataBuffer[bufferSize];
-
-        // save the DataPacket
-        memcpy(dataBuffer, &packet, sizeof(tDataPacket));
-
-        int offset = sizeof(tDataPacket);
-        foreach (const RfidData &d, randomData) {
-            int index = randomData.indexOf(d);
-
-            memcpy(&(dataBuffer[offset + index*sizeof(RfidData)]), (char *)&d, sizeof(RfidData));
-            char retrievied[64];
-            memcpy(retrievied, &(dataBuffer[offset + index*sizeof(RfidData)]), sizeof(RfidData));
-
-            RfidData *rt1 = reinterpret_cast<RfidData *>(retrievied);
-            if(rt1){
-                QDateTime dateTime(get_date(rt1->dateTime));
-                qDebug() << QString("id = %1, appcode = %2, idcode = %3, datetime = %4").arg(rt1->id).arg(rt1->applicationcode).arg(rt1->identificationcode).arg(dateTime.toString());
-            }
-        }
-
-        if(m_socket){
-            qint64 bytes = m_socket->write(dataBuffer, bufferSize);
-            qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(bufferSize);
-            QTimer::singleShot(10000, this, SLOT(sendRandomDataNewDataPacket()));
-        }
-    }
-}
-
 void TcpClient::sendRandomClientPacket()
 {
     /*
@@ -189,7 +75,7 @@ void TcpClient::sendRandomClientPacket()
         KSynchronizeAll = 0x400
     */
     // 9 items
-    int messageType[] = {0x55000000, 0xAA000000};
+    int messageType[] = {KRequest, KSet};
 //    int clientFlags[] = {0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x400};
     int setFlags[] = {0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200}; // 8
     int requestFlags[] = {0x10, 0x100}; // 2
@@ -258,12 +144,12 @@ void TcpClient::sendRandomClientPacket()
 
 void TcpClient::connected()
 {
-    sendRandomDataNewDataPacket();
+    sendRandomClientPacket();
 }
 
 void TcpClient::disconnected()
 {
-    qDebug() << "Disconnected";
+    qDebug() << "Disconnected. " << Q_FUNC_INFO;
     QTimer::singleShot(10000, this, SLOT(start()));
 }
 
@@ -276,7 +162,7 @@ void TcpClient::handleStateChanged(QAbstractSocket::SocketState socketState)
 void TcpClient::handleError(QAbstractSocket::SocketError socketError)
 {
     if(m_socket->state() == QAbstractSocket::UnconnectedState){
-        qDebug() << "Disconnected from server, trying again in 10 seconds.";
+        qDebug() << "Disconnected from server, trying again in 10 seconds. " << Q_FUNC_INFO;
         qDebug() << QString("Error %1: %2").arg(socketError).arg(m_socket->errorString());
         //        QTimer::singleShot(10000, this, SLOT(start()));
     }
@@ -296,6 +182,8 @@ void TcpClient::syncData()
         *
     */
     ClientPacketHeader header;
+    quint32 cset = KSet;
+    quint32 cdata = KData;
     header.flags = KSet | KData;
     header.idsender = m_testClient.id;
     memcpy(header.name, m_testClient.name, 24);
@@ -307,7 +195,7 @@ void TcpClient::syncData()
     QList<RfidData> randomData;
 
     int quantity = rand() % 900 + 125;
-    qDebug() << QString("Quantity = %1").append(quantity);
+    qDebug() << QString("Quantity = %1").arg(quantity);
 
     for(int i = 0; i < quantity; i++) {
         RfidData data;
@@ -361,8 +249,8 @@ void TcpClient::syncTemperature()
     header.MessageUnion.dataSize = 0;
 
     if(m_socket){
-        qint64 bytes = m_socket->write(&header, sizeof(ClientPacketHeader));
-        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(bufferSize);
+        qint64 bytes = m_socket->write((char *)&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg((quint32)sizeof(ClientPacketHeader));
     }
 }
 
@@ -401,13 +289,15 @@ void TcpClient::syncMAC()
     header.temperature = m_testClient.temperature;
     header.dateTime = get_date(m_testClient.dateTime);
 
-    QString macAddress = QNetworkInterface::hardwareAddress();
+
+    QNetworkInterface network;
+    QString macAddress = network.hardwareAddress();
     macAddress = macAddress.remove(":");
     memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
 
     if(m_socket){
-        qint64 bytes = m_socket->write(&header, sizeof(ClientPacketHeader));
-        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(bufferSize);
+        qint64 bytes = m_socket->write((char *)&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(sizeof(ClientPacketHeader));
     }
 }
 
@@ -445,13 +335,14 @@ void TcpClient::syncGeneralInfo()
     header.temperature = m_testClient.temperature;
     header.dateTime = get_date(m_testClient.dateTime);
 
-    QString macAddress = QNetworkInterface::hardwareAddress();
+    QNetworkInterface network;
+    QString macAddress = network.hardwareAddress();
     macAddress = macAddress.remove(":");
     memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
 
     if(m_socket){
-        qint64 bytes = m_socket->write(&header, sizeof(ClientPacketHeader));
-        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(bufferSize);
+        qint64 bytes = m_socket->write((char *)&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(sizeof(ClientPacketHeader));
     }
 }
 
@@ -485,6 +376,9 @@ void TcpClient::readyRead()
             KSynchronizeAll = 0x400
             KGeneralInfo = 0x800
         */
+        quint32 flags = serverHeader->flags;
+        quint32 flagsRequest = KRequest;
+        quint32 flagsSet = KSet;
         if((serverHeader->flags & KRequest) == KRequest){
             // The server sent a message that needs to be answered with some information
             int option = serverHeader->flags &~ KRequest;

@@ -24,12 +24,6 @@ void TCPServer::newConnection()
 {
     QTcpSocket *newConn = m_server->nextPendingConnection();
     if(newConn){
-        QList<QTcpSocket *> connections = findChildren<QTcpSocket *>();
-
-        newConn->write(QString("Hello, I am the Server. Currently there are %1 active connections.\n").arg(connections.size()).toLatin1());
-
-        newConn->flush();
-        //        newConn->waitForBytesWritten(3000);
 
         connect(newConn, SIGNAL(disconnected()), SLOT(onDisconnected()));
         connect(newConn, SIGNAL(readyRead()), SLOT(readyRead()));
@@ -54,9 +48,9 @@ void TCPServer::broadcast()
         KSynchronizeAll = 0x400
     */
     // 9 items
-    int messageType[] = {0x55000000, 0xAA000000};
-    int requestFlags[] = {0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x400};
-    int setFlags[] = {0x10, 0x40, 0x100, 0x200};
+    quint32 messageType[] = {KRequest, KSet};
+    quint32 requestFlags[] = {0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x400};
+    quint32 setFlags[] = {0x10, 0x40, 0x100, 0x200};
 
     int index = rand() % 2;
 
@@ -68,7 +62,7 @@ void TCPServer::broadcast()
         packet.dateTime = get_date(QDateTime::currentDateTime());
 
         foreach (QTcpSocket *socket, connections) {
-            socket->write(&packet, sizeof(ServerPacketHeader));
+            socket->write((char *)&packet, sizeof(ServerPacketHeader));
         }
     }else{
         int index = rand() % 4;
@@ -78,7 +72,7 @@ void TCPServer::broadcast()
         packet.dateTime = get_date(QDateTime::currentDateTime());
 
         foreach (QTcpSocket *socket, connections) {
-            socket->write(&packet, sizeof(ServerPacketHeader));
+            socket->write((char *)&packet, sizeof(ServerPacketHeader));
         }
     }
 
@@ -143,9 +137,9 @@ void TCPServer::readyRead()
                     int dataSize = clientHeader->MessageUnion.dataSize*sizeof(RfidData);
                     char dataReceived[dataSize];
                     memcpy(dataReceived, &(received.data()[sizeof(ClientPacketHeader)]), dataSize);
-                    for(int i=0; i < dataSize; i++){
+                    for(quint32 i=0; i < clientHeader->MessageUnion.dataSize; i++){
                         RfidData rfid;
-                        memcpy(&rfid, &dataReceived[i*sizeof(RfidData)], dataSize);
+                        memcpy(&rfid, &(dataReceived[i*sizeof(RfidData)]), sizeof(RfidData));
                         qDebug() << QString("id = %1, appcode = %2, idcode = %3, datetime = %4").arg(rfid.id).arg(rfid.applicationcode).arg(rfid.identificationcode).arg(get_date(rfid.dateTime).toString());
                     }
                     break;
@@ -167,6 +161,22 @@ void TCPServer::readyRead()
                 case KTimeOuts:
                 case KSynchronizeAll:
                     break;
+                case KGeneralInfo:{
+                    char dataReceived[sizeof(ClientPacketHeader)];
+                    memcpy(dataReceived, &(received.data()[sizeof(ClientPacketHeader)]), dataSize);
+                    if(ClientPacketHeader *header = (ClientPacketHeader *)dataReceived){
+                        qDebug() << QString("Id Sender = %1\n"
+                                            "Name = %2\n"
+                                            "Temperature = %3\n"
+                                            "Date Time = %4\n"
+                                            "MAC Address = %5").arg(header->idsender).
+                                                                arg(header->name).
+                                                                arg(header->temperature).
+                                                                arg(get_date(header->dateTime).toString()).
+                                                                arg(header->MessageUnion.MAC_Address);
+                    }
+                    break;
+                }
                 default:
                     qDebug() << "Unknown request";
                     break;

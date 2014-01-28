@@ -60,8 +60,8 @@ bool operator==(const RfidData &d1, const RfidData &d2);
 
 enum Flags
 {
-    KRequest = 0x55000000,
-    KSet = 0xAA000000,
+    KRequest = 0x15000000,
+    KSet = 0x2A000000,
     KData = 0x4,
     KTemperature = 0x8,
     KDateTime = 0x10,
