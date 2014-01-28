@@ -17,7 +17,7 @@ void TCPServer::start()
     if(m_server->listen(QHostAddress::Any, 9999)){
         connect(m_server, SIGNAL(newConnection()), SLOT(newConnection()));
     }
-    QTimer::singleShot(5000, this, SLOT(broadcast()));
+    QTimer::singleShot(1000, this, SLOT(broadcast()));
 }
 
 void TCPServer::newConnection()
@@ -64,6 +64,8 @@ void TCPServer::broadcast()
         foreach (QTcpSocket *socket, connections) {
             socket->write((char *)&packet, sizeof(ServerPacketHeader));
         }
+
+        //        QTimer::singleShot(10000, this, SLOT(broadcast()));
     }else{
         int index = rand() % 4;
 
@@ -75,8 +77,7 @@ void TCPServer::broadcast()
             socket->write((char *)&packet, sizeof(ServerPacketHeader));
         }
     }
-
-    QTimer::singleShot(10000, this, SLOT(broadcast()));
+    QTimer::singleShot(1000, this, SLOT(broadcast()));
 }
 
 void TCPServer::onDisconnected()
@@ -125,7 +126,7 @@ void TCPServer::readyRead()
                 case KTemperature:
                     break;
                 default:
-                    qDebug() << "Unknown request";
+                    qDebug() << "KRequest: Unknown request. - " << Q_FUNC_INFO;
                     break;
                 }
             }else if ((clientHeader->flags & KSet) == KSet){
@@ -134,56 +135,100 @@ void TCPServer::readyRead()
                 switch (option) {
                 case KData:
                 {
+
                     int dataSize = clientHeader->MessageUnion.dataSize*sizeof(RfidData);
-                    char dataReceived[dataSize];
-                    memcpy(dataReceived, &(received.data()[sizeof(ClientPacketHeader)]), dataSize);
-                    for(quint32 i=0; i < clientHeader->MessageUnion.dataSize; i++){
-                        RfidData rfid;
-                        memcpy(&rfid, &(dataReceived[i*sizeof(RfidData)]), sizeof(RfidData));
-                        qDebug() << QString("id = %1, appcode = %2, idcode = %3, datetime = %4").arg(rfid.id).arg(rfid.applicationcode).arg(rfid.identificationcode).arg(get_date(rfid.dateTime).toString());
+                    if(received.size() == (int)(dataSize + sizeof(ClientPacketHeader))){
+                        char dataReceived[dataSize];
+                        memcpy(dataReceived, &(received.data()[sizeof(ClientPacketHeader)]), dataSize);
+                        for(quint32 i=0; i < clientHeader->MessageUnion.dataSize; i++){
+                            RfidData rfid;
+                            memcpy(&rfid, &(dataReceived[i*sizeof(RfidData)]), sizeof(RfidData));
+                            //                        qDebug() << QString("id = %1, appcode = %2, idcode = %3, datetime = %4").arg(rfid.id).arg(rfid.applicationcode).arg(rfid.identificationcode).arg(get_date(rfid.dateTime).toString());
+                        }
+                        qDebug() << QString("KData\nId Sender = %1\n"
+                                            "Name = %2\n"
+                                            "Temperature = %3\n"
+                                            "Date Time = %4\n"
+                                            "MAC Address = %5\n"
+                                            "Packet Size = %6").arg(clientHeader->idsender).
+                                    arg(clientHeader->name).
+                                    arg(clientHeader->temperature).
+                                    arg(get_date(clientHeader->dateTime).toString()).
+                                    arg(clientHeader->MessageUnion.MAC_Address.macAddress).
+                                    arg(sizeof(ClientPacketHeader)+dataSize);
                     }
                     break;
                 }
                 case KIPAddress:
-                    qDebug() << QString("Received Ip Address: %1 from Client: %2").arg(clientHeader->MessageUnion.IP_Address.ipAddress).arg(clientHeader->name);
+                    qDebug() << QString("KIPAddress\nReceived Ip Address: %1 from Client: %2").arg(clientHeader->MessageUnion.IP_Address.ipAddress).arg(clientHeader->name);
                     break;
                 case KMAC:
-                    qDebug() << QString("Received MAC Address: %1 from Client: %2").arg(clientHeader->MessageUnion.MAC_Address.macAddress).arg(clientHeader->name);
+                    qDebug() << QString("KMAC\nReceived MAC Address: %1 from Client: %2").arg(clientHeader->MessageUnion.MAC_Address.macAddress).arg(clientHeader->name);
                     break;
                 case KTemperature:
-                    qDebug() << QString("Received Temperature: %1 from Client: %2").arg(clientHeader->temperature).arg(clientHeader->name);
+                    qDebug() << QString("KTemperature\nReceived Temperature: %1 from Client: %2").arg(clientHeader->temperature).arg(clientHeader->name);
                     break;
                 case KDateTime:
-                    qDebug() << QString("Received Date & Time: %1 from Client: %2").arg(get_date(clientHeader->dateTime).toString()).arg(clientHeader->name);
+                    qDebug() << QString("KDateTime\nReceived Date & Time: %1 from Client: %2").arg(get_date(clientHeader->dateTime).toString()).arg(clientHeader->name);
                     break;
                 case KName:
+                    qDebug() << QString("KName\nId Sender = %1\n"
+                                        "Name = %2\n"
+                                        "Temperature = %3\n"
+                                        "Date Time = %4\n"
+                                        "MAC Address = %5\n").arg(clientHeader->idsender).
+                                arg(clientHeader->name).
+                                arg(clientHeader->temperature).
+                                arg(get_date(clientHeader->dateTime).toString()).
+                                arg(clientHeader->MessageUnion.TimeOuts.readerTimeOut);
+                    break;
                 case KID:
+                    qDebug() << QString("KID\nId Sender = %1\n"
+                                        "Name = %2\n"
+                                        "Temperature = %3\n"
+                                        "Date Time = %4\n"
+                                        "MAC Address = %5\n").arg(clientHeader->idsender).
+                                arg(clientHeader->name).
+                                arg(clientHeader->temperature).
+                                arg(get_date(clientHeader->dateTime).toString()).
+                                arg(clientHeader->MessageUnion.TimeOuts.readerTimeOut);
+                    break;
                 case KTimeOuts:
+                    qDebug() << QString("KTimeOuts\nId Sender = %1\n"
+                                        "Name = %2\n"
+                                        "Temperature = %3\n"
+                                        "Date Time = %4\n"
+                                        "Reader Timeout = %5\n"
+                                        "Synchronization Timeout = %6").arg(clientHeader->idsender).
+                                arg(clientHeader->name).
+                                arg(clientHeader->temperature).
+                                arg(get_date(clientHeader->dateTime).toString()).
+                                arg(clientHeader->MessageUnion.TimeOuts.readerTimeOut).
+                                arg(clientHeader->MessageUnion.TimeOuts.synTimeOut);
+                    break;
                 case KSynchronizeAll:
                     break;
-                case KGeneralInfo:{
-                    char dataReceived[sizeof(ClientPacketHeader)];
-                    memcpy(dataReceived, &(received.data()[sizeof(ClientPacketHeader)]), dataSize);
-                    if(ClientPacketHeader *header = (ClientPacketHeader *)dataReceived){
-                        qDebug() << QString("Id Sender = %1\n"
-                                            "Name = %2\n"
-                                            "Temperature = %3\n"
-                                            "Date Time = %4\n"
-                                            "MAC Address = %5").arg(header->idsender).
-                                                                arg(header->name).
-                                                                arg(header->temperature).
-                                                                arg(get_date(header->dateTime).toString()).
-                                                                arg(header->MessageUnion.MAC_Address);
-                    }
+                case KGeneralInfo:
+                {
+                    qDebug() << QString("KGeneralInfo\nId Sender = %1\n"
+                                        "Name = %2\n"
+                                        "Temperature = %3\n"
+                                        "Date Time = %4\n"
+                                        "MAC Address = %5").arg(clientHeader->idsender).
+                                arg(clientHeader->name).
+                                arg(clientHeader->temperature).
+                                arg(get_date(clientHeader->dateTime).toString()).
+                                arg(clientHeader->MessageUnion.MAC_Address.macAddress);
+
                     break;
                 }
                 default:
-                    qDebug() << "Unknown request";
+                    qDebug() << "KSet: Unknown request. - " << Q_FUNC_INFO;
                     break;
                 }
             }else{
                 // The validation bits are invalid
-                qDebug() << "The Validation bits are corrupted";
+                qDebug() << "The Validation bits are corrupted. - " << Q_FUNC_INFO;
             }
         }
     }

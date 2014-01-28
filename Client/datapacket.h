@@ -74,37 +74,6 @@ enum Flags
     KGeneralInfo = 0x800
 };
 
-typedef struct sDataPacket
-{
-    quint32	flags;
-    quint32	idsender;
-    char name[24];
-    float temperature;
-    quint64 dateTime;
-    union {
-        struct {
-            quint64	ipAddress;
-        } IP_Address;
-
-        struct {
-            char macAddress[6];
-            char padding[2];
-        } MAC_Address;
-
-        struct {
-            quint32	julianDays;
-            quint32	milliseconds;
-        } DateTime;
-
-        struct {
-            quint32	readerTimeOut;
-            quint32	synTimeOut;
-        } TimeOuts;
-
-    } MessageUnion;
-    quint32	dataSize;
-} tDataPacket;
-
 
 quint64 get_date(const QDateTime &dateTime);
 QDateTime get_date(quint64 dateTime);
@@ -115,6 +84,7 @@ struct ServerPacketHeader
 {
     quint32	flags;
     quint64 dateTime;
+    char md5Sum[16];
     union {
         struct {
             quint64	id;
@@ -137,6 +107,7 @@ struct ClientPacketHeader
     char name[24];
     float temperature;
     quint64 dateTime;
+    char md5Sum[16];
     union {
         struct {
             quint64	ipAddress;
@@ -155,5 +126,8 @@ struct ClientPacketHeader
         quint32	dataSize;
     } MessageUnion;
 };
+
+QByteArray get_hash(ClientPacketHeader *clientHeader);
+bool check_hash(const QByteArray &hash, ClientPacketHeader *clientHeader);
 
 #endif // DATAPACKET_H

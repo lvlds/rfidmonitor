@@ -20,7 +20,11 @@ TcpClient::TcpClient(QObject *parent) :
     connect(m_socket, SIGNAL(stateChanged(QAbstractSocket::SocketState)), SLOT(handleStateChanged(QAbstractSocket::SocketState)));
     connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(handleError(QAbstractSocket::SocketError)));
 
+//    m_testClient.dateTime = QDateTime::currentDateTime();
+//    m_testClient.temperature = 31.25;
+//    memcpy(m_testClient.name, "PONTO COLETA 1", 24);
 
+    createTestClient();
 }
 
 void TcpClient::start(const QString &server)
@@ -248,6 +252,18 @@ void TcpClient::syncTemperature()
     header.dateTime = get_date(m_testClient.dateTime);
     header.MessageUnion.dataSize = 0;
 
+    QString macAddress("??:??:??:??:??:??");
+
+    foreach (QNetworkInterface interfaces, QNetworkInterface::allInterfaces()) {
+        if(!(interfaces.flags() & QNetworkInterface::IsLoopBack)) {
+            qDebug() << QString("Hardware Address = %1").arg(interfaces.hardwareAddress());
+            macAddress = interfaces.hardwareAddress();
+        }
+    }
+
+    macAddress = macAddress.remove(":");
+    memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
+
     if(m_socket){
         qint64 bytes = m_socket->write((char *)&header, sizeof(ClientPacketHeader));
         qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg((quint32)sizeof(ClientPacketHeader));
@@ -257,16 +273,109 @@ void TcpClient::syncTemperature()
 void TcpClient::syncDateTime()
 {
     qDebug() << "Send \"Date & Time\" to Server";
+    /*
+        *  - flags (KSet = 0xAA000000, KData = 0x4)
+        *  - idSender
+        *  - name
+        *  - temperature
+        *  - datetime
+        *  - MessageUnion.dataSize
+        *
+    */
+    ClientPacketHeader header;
+    header.flags = KSet | KDateTime;
+    header.idsender = m_testClient.id;
+    memcpy(header.name, m_testClient.name, 24);
+    header.temperature = m_testClient.temperature;
+    header.dateTime = get_date(m_testClient.dateTime);
+
+    QString macAddress("??:??:??:??:??:??");
+
+    foreach (QNetworkInterface interfaces, QNetworkInterface::allInterfaces()) {
+        if(!(interfaces.flags() & QNetworkInterface::IsLoopBack)) {
+            qDebug() << QString("Hardware Address = %1").arg(interfaces.hardwareAddress());
+            macAddress = interfaces.hardwareAddress();
+        }
+    }
+
+    macAddress = macAddress.remove(":");
+    memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
+
+    if(m_socket){
+        qint64 bytes = m_socket->write((char *)&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(sizeof(ClientPacketHeader));
+    }
 }
 
 void TcpClient::syncIPAddress()
 {
     qDebug() << "Send \"IP Address\" to Server";
+
+    /*
+        *  - flags (KSet = 0xAA000000, KData = 0x4)
+        *  - idSender
+        *  - name
+        *  - temperature
+        *  - datetime
+        *  - MessageUnion.dataSize
+        *
+    */
+    ClientPacketHeader header;
+    header.flags = KSet | KIPAddress;
+    header.idsender = m_testClient.id;
+    memcpy(header.name, m_testClient.name, 24);
+    header.temperature = m_testClient.temperature;
+    header.dateTime = get_date(m_testClient.dateTime);
+
+    foreach (QHostAddress hostAddress, QNetworkInterface::allAddresses()) {
+        if(!hostAddress.isLoopback() && (hostAddress.protocol() == QAbstractSocket::IPv4Protocol)) {
+            qDebug() << QString("toString = %1, toIPv4 = %2").arg(hostAddress.toString()).arg(hostAddress.toIPv4Address());
+            header.MessageUnion.IP_Address.ipAddress = hostAddress.toIPv4Address();
+        }
+    }
+
+    if(m_socket){
+        qint64 bytes = m_socket->write((char *)&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(sizeof(ClientPacketHeader));
+    }
 }
 
 void TcpClient::syncName()
 {
     qDebug() << "Send \"Name\" to Server";
+    /*
+        *  - flags (KSet = 0xAA000000, KData = 0x4)
+        *  - idSender
+        *  - name
+        *  - temperature
+        *  - datetime
+        *  - MessageUnion.dataSize
+        *
+    */
+    ClientPacketHeader header;
+    header.flags = KSet | KName;
+    header.idsender = m_testClient.id;
+    memcpy(header.name, m_testClient.name, 24);
+    header.temperature = m_testClient.temperature;
+    header.dateTime = get_date(m_testClient.dateTime);
+
+
+    QString macAddress("??:??:??:??:??:??");
+
+    foreach (QNetworkInterface interfaces, QNetworkInterface::allInterfaces()) {
+        if(!(interfaces.flags() & QNetworkInterface::IsLoopBack)) {
+            qDebug() << QString("Hardware Address = %1").arg(interfaces.hardwareAddress());
+            macAddress = interfaces.hardwareAddress();
+        }
+    }
+
+    macAddress = macAddress.remove(":");
+    memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
+
+    if(m_socket){
+        qint64 bytes = m_socket->write((char *)&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(sizeof(ClientPacketHeader));
+    }
 
 }
 
@@ -283,15 +392,22 @@ void TcpClient::syncMAC()
         *
     */
     ClientPacketHeader header;
-    header.flags = KSet | KData;
+    header.flags = KSet | KMAC;
     header.idsender = m_testClient.id;
     memcpy(header.name, m_testClient.name, 24);
     header.temperature = m_testClient.temperature;
     header.dateTime = get_date(m_testClient.dateTime);
 
 
-    QNetworkInterface network;
-    QString macAddress = network.hardwareAddress();
+    QString macAddress("??:??:??:??:??:??");
+
+    foreach (QNetworkInterface interfaces, QNetworkInterface::allInterfaces()) {
+        if(!(interfaces.flags() & QNetworkInterface::IsLoopBack)) {
+            qDebug() << QString("Hardware Address = %1").arg(interfaces.hardwareAddress());
+            macAddress = interfaces.hardwareAddress();
+        }
+    }
+
     macAddress = macAddress.remove(":");
     memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
 
@@ -304,11 +420,67 @@ void TcpClient::syncMAC()
 void TcpClient::syncID()
 {
     qDebug() << "Send \"ID\" to Server";
+    /*
+        *  - flags (KSet = 0xAA000000, KData = 0x4)
+        *  - idSender
+        *  - name
+        *  - temperature
+        *  - datetime
+        *  - MessageUnion.dataSize
+        *
+    */
+    ClientPacketHeader header;
+    header.flags = KSet | KID;
+    header.idsender = m_testClient.id;
+    memcpy(header.name, m_testClient.name, 24);
+    header.temperature = m_testClient.temperature;
+    header.dateTime = get_date(m_testClient.dateTime);
+
+
+    QString macAddress("??:??:??:??:??:??");
+
+    foreach (QNetworkInterface interfaces, QNetworkInterface::allInterfaces()) {
+        if(!(interfaces.flags() & QNetworkInterface::IsLoopBack)) {
+            qDebug() << QString("Hardware Address = %1").arg(interfaces.hardwareAddress());
+            macAddress = interfaces.hardwareAddress();
+        }
+    }
+
+    macAddress = macAddress.remove(":");
+    memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
+
+    if(m_socket){
+        qint64 bytes = m_socket->write((char *)&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(sizeof(ClientPacketHeader));
+    }
 }
 
 void TcpClient::syncTimeouts()
 {
     qDebug() << "Send \"Reading & Synchronization Timeout\" to Server";
+    /*
+        *  - flags (KSet = 0xAA000000, KData = 0x4)
+        *  - idSender
+        *  - name
+        *  - temperature
+        *  - datetime
+        *  - MessageUnion.dataSize
+        *
+    */
+    ClientPacketHeader header;
+    header.flags = KSet | KTimeOuts;
+    header.idsender = m_testClient.id;
+    memcpy(header.name, m_testClient.name, 24);
+    header.temperature = m_testClient.temperature;
+    header.dateTime = get_date(m_testClient.dateTime);
+
+    header.MessageUnion.TimeOuts.readerTimeOut = 150;
+    header.MessageUnion.TimeOuts.synTimeOut = 10000;
+
+    if(m_socket){
+        qint64 bytes = m_socket->write((char *)&header, sizeof(ClientPacketHeader));
+        qDebug() << QString("%1 of %2 bytes written to server.").arg(bytes).arg(sizeof(ClientPacketHeader));
+    }
 }
 
 void TcpClient::syncAll()
@@ -329,14 +501,21 @@ void TcpClient::syncGeneralInfo()
         *
     */
     ClientPacketHeader header;
-    header.flags = KSet | KData;
+    header.flags = KSet | KGeneralInfo;
     header.idsender = m_testClient.id;
     memcpy(header.name, m_testClient.name, 24);
     header.temperature = m_testClient.temperature;
     header.dateTime = get_date(m_testClient.dateTime);
 
-    QNetworkInterface network;
-    QString macAddress = network.hardwareAddress();
+    QString macAddress("??:??:??:??:??:??");
+
+    foreach (QNetworkInterface interfaces, QNetworkInterface::allInterfaces()) {
+        if(!(interfaces.flags() & QNetworkInterface::IsLoopBack)) {
+            qDebug() << QString("Hardware Address = %1").arg(interfaces.hardwareAddress());
+            macAddress = interfaces.hardwareAddress();
+        }
+    }
+
     macAddress = macAddress.remove(":");
     memcpy(header.MessageUnion.MAC_Address.macAddress, macAddress.toStdString().c_str(), 6);
 
@@ -350,8 +529,9 @@ void TcpClient::createTestClient()
 {
     srand(time(NULL));
     m_testClient.id = rand() % 100;
+    m_testClient.temperature = 31.48;
     m_testClient.dateTime = QDateTime::currentDateTime();
-    sprintf(m_testClient.name, "Ponto de Coleta N %d", m_testClient.id);
+    sprintf(m_testClient.name, "Ponto de Coleta %d", m_testClient.id);
 }
 
 void TcpClient::readyRead()
@@ -376,9 +556,6 @@ void TcpClient::readyRead()
             KSynchronizeAll = 0x400
             KGeneralInfo = 0x800
         */
-        quint32 flags = serverHeader->flags;
-        quint32 flagsRequest = KRequest;
-        quint32 flagsSet = KSet;
         if((serverHeader->flags & KRequest) == KRequest){
             // The server sent a message that needs to be answered with some information
             int option = serverHeader->flags &~ KRequest;
@@ -421,7 +598,7 @@ void TcpClient::readyRead()
                 syncAll();
                 break;
             default:
-                qDebug() << "Unknown request";
+                qDebug() << "Unknown request. - " << Q_FUNC_INFO;
                 break;
             }
         }else if ((serverHeader->flags & KSet) == KSet){
@@ -448,12 +625,12 @@ void TcpClient::readyRead()
             case KSynchronizeAll:
                 break;
             default:
-                qDebug() << "Unknown request";
+                qDebug() << "Unknown request. - " << Q_FUNC_INFO;
                 break;
             }
         }else{
             // The validation bits are invalid
-            qDebug() << "The Validation bits are corrupted";
+            qDebug() << "The Validation bits are corrupted. - " << Q_FUNC_INFO;
         }
     }
 }

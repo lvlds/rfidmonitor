@@ -1,3 +1,5 @@
+#include <QCryptographicHash>
+
 #include "datapacket.h"
 
 
@@ -34,4 +36,21 @@ QDateTime get_date(quint64 dateTime)
     QDateTime dt(QDate::fromJulianDay(julianDays), QTime::fromMSecsSinceStartOfDay(milliseconds));
 
     return dt;
+}
+
+
+QByteArray get_hash(ClientPacketHeader *clientHeader)
+{
+    QByteArray hashData = QCryptographicHash::hash((char *)clientHeader, QCryptographicHash::Md5);
+    return hashData.toHex();
+}
+
+
+bool check_hash(const QByteArray &hash, ClientPacketHeader *clientHeader)
+{
+    QByteArray md5Sum = QByteArray(clientHeader->md5Sum);
+
+//    memset(clientHeader->md5Sum, 0, 16);
+
+    return hash == md5Sum;
 }
