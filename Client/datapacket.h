@@ -71,13 +71,15 @@ enum Flags
     KID = 0x100,
     KTimeOuts = 0x200,
     KSynchronizeAll = 0x400,
-    KGeneralInfo = 0x800
+    KGeneralInfo = 0x800,
+    KSYN = 0x1000,
+    KSYN_ACK = 0x2000,
+    KACK = 0x4000,
+    KHandShake = 0x8000
 };
-
 
 quint64 get_date(const QDateTime &dateTime);
 QDateTime get_date(quint64 dateTime);
-
 
 // Header structures for packets sent from Server to Client
 struct ServerPacketHeader
@@ -90,7 +92,6 @@ struct ServerPacketHeader
             quint64	id;
             char clientName[24];
         } ClientInfo;
-
         struct {
             quint32	readerTimeOut;
             quint32	synTimeOut;
@@ -107,27 +108,36 @@ struct ClientPacketHeader
     char name[24];
     float temperature;
     quint64 dateTime;
-    char md5Sum[16];
     union {
         struct {
             quint64	ipAddress;
         } IP_Address;
-
         struct {
             char macAddress[6];
             char padding[2];
         } MAC_Address;
-
         struct {
             quint32	readerTimeOut;
             quint32	synTimeOut;
         } TimeOuts;
-
         quint32	dataSize;
     } MessageUnion;
 };
 
+struct IndexVector
+{
+    quint32 iv;
+};
+
+struct MD5Sum
+{
+    char digest[32];
+};
+
 QByteArray get_hash(ClientPacketHeader *clientHeader);
 bool check_hash(const QByteArray &hash, ClientPacketHeader *clientHeader);
+
+QByteArray get_hash(ServerPacketHeader *serverHeader);
+bool check_hash(const QByteArray &hash, ServerPacketHeader *serverHeader);
 
 #endif // DATAPACKET_H

@@ -48,9 +48,24 @@ QByteArray get_hash(ClientPacketHeader *clientHeader)
 
 bool check_hash(const QByteArray &hash, ClientPacketHeader *clientHeader)
 {
-    QByteArray md5Sum = QByteArray(clientHeader->md5Sum);
+//    QByteArray md5Sum = QByteArray(clientHeader->md5Sum);
 
 //    memset(clientHeader->md5Sum, 0, 16);
 
+//    return hash == md5Sum;
+    return 1;
+}
+
+
+QByteArray get_hash(ServerPacketHeader *serverHeader)
+{
+    QByteArray hashData = QCryptographicHash::hash((char *)serverHeader, QCryptographicHash::Md5);
+    return hashData.toHex();
+}
+
+
+bool check_hash(const QByteArray &hash, ServerPacketHeader *serverHeader)
+{
+    QByteArray md5Sum = QByteArray(serverHeader->md5Sum);
     return hash == md5Sum;
 }
