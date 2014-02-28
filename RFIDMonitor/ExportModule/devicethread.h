@@ -30,6 +30,10 @@
 
 #include <QThread>
 
+#include "export/exportlocaldata.h"
+
+class ExportLocalData;
+
 class DeviceThread : public QThread
 {
     Q_OBJECT
@@ -37,6 +41,7 @@ protected:
 
 public:
     explicit DeviceThread(QObject *parent = 0);
+    static DeviceThread * instance();
 
     /*!
      * \brief the run function starts this thread that will listen device connections
@@ -45,8 +50,6 @@ public:
 
 private:
     QString m_module;
-    static DeviceThread * instance();
-
 };
 
 #endif // DEVICETHREAD_H

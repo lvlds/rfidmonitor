@@ -30,12 +30,11 @@
 
 /*!
 * \class ExportLocalData
-* \brief The ExportLocalData class is responsible to get the non synced data from database, and export it to device.
+* \brief The ExportLocalData class is responsible to get the non synced data from database, and export it to a temporary file and to device.
 *
 * The ExportLocalData class has as objectives:
-* get the path to the device just connected to the computer,
-* get the non-synced data from the database,
-* write these data into a file and save it in the device,
+* get the non-synced data from the database and write it into a temporary file.
+* When a device is connected it will find the path to the device just connected to the computer, copy the temporary file into the device and delete the file from local disk,
 * change the sync flag of the temporary registers and then update the database with their current values.
 * While the program is writing the exported data in the device, the application turns the red led on,
 * after writing all the data the red led are turned off and the green led on until remove the device.
@@ -43,8 +42,10 @@
 
 #include <QString>
 #include <QSqlDatabase>
+#include <QFile>
 #include <QMutex>
 #include <QObject>
+#include <QTimer>
 
 class BlinkLed;
 class Rfiddata;
@@ -60,52 +61,53 @@ public:
     static ExportLocalData * instance();
 
     /*!
-     * \brief exportAllNonSyncedRegisters get the path of the device on which the data will be exported. Passes the device path to the exportToDevice function
-     * \return true if the data was exported successfully and false otherwise
-     * \sa exportToDevice
-     */
-    bool exportAllNonSyncedRegisters();
-
-    /*!
-     * \brief exportCSVData write a file with CSV format
-     * \param device path where the file must be saved
-     * \param list of data to be exported
-     */
-    void exportCSVData(const QString &device, const QList<Rfiddata *> &list) throw(std::exception);
-
-    /*!
-     * \brief exportLegacyCSVData write a file with CSV format, but using a legacy pattern
-     * \param device path where the file must be saved
-     * \param list of data to be exported
-     */
-    void exportLegacyCSVData(const QString &device, const QList<Rfiddata *> &list) throw(std::exception);
-
-    /*!
      * \brief turnOffLed turns the green led off
      */
     void turnOffLed();
 
+public slots:
+
+    /*!
+     * \brief When a QTimer emmit a timeoutr signal this function is called to export the non sync data into a temporary file. It will search for data and if existe non cync data it will export to file and return. Just return, otherwise.
+     */
+    bool exportToTempFile();
+
+    /*!
+     * \brief exportToDevice call devicePath() funtion to take the path of device to copy file into it.
+     * Once the data is successfully exported, it will delete the temporary file from local disk.
+     *
+     * \sa devicePath()
+     */
+    bool exportToDevice();
 
 private:
+    /*!
+     * \brief devicePath inspect all devices mounted in /media directory and verify if is possible to write into a device. If the device is writable return a path to device else return an empty string.
+     * \return the path of device to copy data into.
+     */
+    QString devicePath();
+
+    // Name of the module. Is used to write log records
     QString m_module;
     explicit ExportLocalData(QObject *parent = 0);
 
     /*!
-     * \brief exportToDevice get a list of non-synced data from the database and passes to the exportCSVData and exportLegacyCSVData functions, also passes the device path.
-     * Once the data is successfully exported, it will change the sync flag of the temporary registers and then update the database with their current values.
+     * \brief m_exportTime is a QTimer that defines the interval of exportation to temp file. The timeout signal is connected to exportToTempFile() slot.
      *
-     * \param device path where the data must be exported
-     * \return true if the data was successfully exported and false otherwise
-     * \sa exportLegacyCSVData exportCSVData
+     * \sa exportToTempFile()
      */
-    bool exportToDevice(QString device);
+    QTimer *m_exportTime;
+
+    // file /proc/mounts.
+    QFile m_mounts;
+    // Define the temporary file to export data
+    QFile m_tempFile;
     QMutex m_mutex;
 
     /*!
      * \brief m_blickLed is an object to manipulate the green and red leds, which are used to show to the user the status of process
      */
-    BlinkLed *m_blickLed;
-
+    BlinkLed *m_blinkLed;
 };
 
 #endif // EXPORTLOCALDATA_H

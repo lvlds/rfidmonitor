@@ -38,6 +38,7 @@ MainService::MainService(QObject *parent) :
     QObject(parent)
 {
     m_module = "MainService";
+    m_retryReadInterval = 1000*10;
 }
 
 void MainService::callMainServices(const QMap<QString, QString> &services)
@@ -52,24 +53,23 @@ void MainService::callMainServices(const QMap<QString, QString> &services)
 
     try {
         // reading.start_reading
-        std::function< void(const QString &)> readingService = ServiceManager::instance()->get_function< void, const QString &>("reading.start_reading");
+        std::function< void(const QString &)> readingService = ServiceManager::instance()->get_function< void, const QString &>("reading.start_reading_MRI2000");
         m_device = services.value(MainService::KDeviceParam);
         readingService(m_device);
     }catch(...) {
         Logger::instance()->writeRecord(Logger::critical, m_module, Q_FUNC_INFO, "ERROR in start reading function");
-        QTimer::singleShot(6000, this, SLOT(retryStartReading()));
+        QTimer::singleShot(m_retryReadInterval, this, SLOT(retryStartReading()));
     }
-
 }
 
 void MainService::retryStartReading()
 {
     try {
         // reading.start_reading
-        std::function< void(const QString &)> readingService = ServiceManager::instance()->get_function< void, const QString &>("reading.start_reading");
+        std::function< void(const QString &)> readingService = ServiceManager::instance()->get_function< void, const QString &>("reading.start_reading_MRI2000");
         readingService(m_device);
     }catch(...){
         Logger::instance()->writeRecord(Logger::fatal, m_module, Q_FUNC_INFO, "trying to start reading");
-        QTimer::singleShot(6000, this, SLOT(retryStartReading()));
+        QTimer::singleShot(m_retryReadInterval, this, SLOT(retryStartReading()));
     }
 }

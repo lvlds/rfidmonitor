@@ -92,17 +92,17 @@ void RFIDMonitor::loadModules()
 {
     QDir pluginsDir(qApp->applicationDirPath());
 
-//    // To be used in production on Pi with "/home/pi/FishMonitoring " folder.
-//    pluginsDir.cd("modules");
+    // -------- Veriry if exists the modules directory ---------------
+    // In development environment, the "modules directory" can be found in your "projectBuildPath" folder, that makes possible running app directly by QtCreator.
+    // In Production/Release environment, the 'modules directory' must be found in /home/$USER/FishMonitoring directory
+    if(!pluginsDir.cd("modules")){
+        if(!pluginsDir.cd("../RFIDMonitor/modules")){
+            Logger::instance()->writeRecord(Logger::fatal, m_module, Q_FUNC_INFO, QString("modules directory not found"));
+            return;
+        }
+    }
 
-//    if(!pluginsDir.exists()){
-//        //To be used in development on Desktop with "/home/<user>/projectBuildPath" folder, that make possible direct run app by QtCreator.
-//        pluginsDir.cd("../RFIDMonitor/modules");
-//    }
-
-    pluginsDir.cd("modules");
-//    pluginsDir.cd("../RFIDMonitor/modules");
-
+    // Load modules
     foreach (QString fileName, pluginsDir.entryList(QDir::Files)){
         QPluginLoader loader(pluginsDir.absoluteFilePath(fileName));
 

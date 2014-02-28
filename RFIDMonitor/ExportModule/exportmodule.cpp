@@ -24,9 +24,10 @@
 ** Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 **
 ****************************************************************************/
-
 #include <servicemanager.h>
+#include <QObject>
 
+#include "logger.h"
 #include "exportmodule.h"
 #include "export/exportlocaldata.h"
 
@@ -36,9 +37,11 @@ static DeviceThread *g_thread = 0;
  * \brief start_daemon start Thread to detect new devices to export data
  */
 void start_daemon(){
+
     // only start a new thread if this is not already started
     if(!g_thread){
-        g_thread = new DeviceThread;
+        Logger::instance()->writeRecord(Logger::error, "ExportModule", Q_FUNC_INFO, QString("Starting device thread"));
+        g_thread = new DeviceThread; 
         g_thread->start();
     }
 }
@@ -46,6 +49,7 @@ void start_daemon(){
 ExportModule::ExportModule(QObject *parent) :
     CoreModule(parent)
 {
+
     /* create a unique instance for the class ExportLocalData, that will be called from DeviceThread class.
     * If not do this, will get an error when the DeviceThread class try use an instance of ExportLocalData, because
     * is trying to create an object from ExportLocalData class into a thread that is child of the thread that is owner of the ExportLocalData class, so this is not possible

@@ -87,8 +87,8 @@ DeviceThread *DeviceThread::instance()
 void deviceAddedCallback(const char *)
 {
     Logger::instance()->writeRecord(Logger::info, "ExportModule", Q_FUNC_INFO, "Device Detected");
-    // call thea to class responsible to export dat device just connected
-    ExportLocalData::instance()->exportAllNonSyncedRegisters();
+    // call function responsible to export data to device just connected
+    ExportLocalData::instance()->exportToDevice();
 }
 
 /*!

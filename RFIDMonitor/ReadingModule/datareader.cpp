@@ -80,18 +80,17 @@ bool DataReader::startReading(const QString &device)
 {
     QSerialPortInfo info(device);
     m_serial->setPort(info);
-    m_serial->setBaudRate(QSerialPort::Baud9600);
-    m_serial->setDataBits(QSerialPort::Data8);
-    m_serial->setStopBits(QSerialPort::OneStop);
-    m_serial->setParity(QSerialPort::NoParity);
 
     if(!m_serial->open(QIODevice::ReadWrite))
     {
         Logger::instance()->writeRecord(Logger::fatal, m_module, Q_FUNC_INFO, QString("Could not open device %1").arg(device));
         // create class invalid_device exception on core Module
-//        QTimer::singleShot(300, QCoreApplication::instance(), SLOT(quit()));
         return false;
     }
+    m_serial->setBaudRate(QSerialPort::Baud9600);
+    m_serial->setDataBits(QSerialPort::Data8);
+    m_serial->setStopBits(QSerialPort::OneStop);
+    m_serial->setParity(QSerialPort::NoParity);
     return true;
 }
 

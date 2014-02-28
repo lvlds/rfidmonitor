@@ -50,6 +50,8 @@ public:
     ~ExportModule();
 
     void init();
+
+    QString m_module;
 };
 
 #endif // EXPORTMODULE_H
