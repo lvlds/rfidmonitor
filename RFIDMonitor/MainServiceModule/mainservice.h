@@ -54,6 +54,7 @@ private slots:
     void retryStartReading();
 
 private:
+    int m_retryReadInterval;
     QString m_module;
     QString m_device;
 };

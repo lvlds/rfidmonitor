@@ -36,6 +36,9 @@
 #include <QTimer>
 #include <functional>
 
+#include <QProcess>
+#include <QRegularExpression>
+
 #include <servicemanager.h>
 #include <logger.h>
 #include "object/rfiddata.h"
@@ -45,13 +48,149 @@
 
 ExportLocalData::ExportLocalData(QObject *parent) :
     QObject(parent),
-    m_blickLed(0)
+    m_blinkLed(0)
 {
+    // Time that define the interval to export data to temporary file
+    int exportTime = 1000*10;
+
     m_module = "ExportModule";
-    m_blickLed = new BlinkLed(this);
+    m_blinkLed = new BlinkLed(this);
+
+    // Object to manipulate file
+    m_tempFile.setFileName(QCoreApplication::applicationDirPath() + "/TempExport.fish");
+
+    // Timer to export data to temporary file
+    m_exportTime = new QTimer(this);
+    m_exportTime->setInterval(exportTime);
+    // When the timeout signal is emitted the export action slot is called (exportAction when do not receive parameters uses a default value and then export data to temp file)
+    QObject::connect(m_exportTime, SIGNAL(timeout()), this, SLOT(exportToTempFile()));
+    m_exportTime->start();
+
+    m_mounts.setFileName("/proc/mounts");
 }
 
-bool ExportLocalData::exportToDevice(QString device)
+// Export temporary file to an external device.
+bool ExportLocalData::exportToDevice()
+{
+    // turns off leds red and green
+    m_blinkLed->blinkGreenLed(0);
+    m_blinkLed->blinkRedLed(0);
+
+    // turn on red led
+    m_blinkLed->blinkRedLed(1);
+
+    bool returnValue = true;
+
+    QTimer timer;
+    timer.start(5000);
+
+    // get device path to export file.
+    QString device = devicePath();
+    // if device path is empty there's no device capable to recive the file
+    if(!device.isEmpty()){
+        try{
+            // export data to external device
+            Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, QString("Exporting temp file to device"));
+
+            // name of file to save on device (absolute path)
+            QString destinationPath(device + "/export_" + QDateTime::currentDateTime().toString().replace(" ", "_").replace(":","") + ".fish");
+
+            // If the temp file doesn't exist, has nothing to be exported
+            if(m_tempFile.exists()){
+                if(QFile::copy(m_tempFile.fileName(), destinationPath)){
+                    if(!QFile::remove(m_tempFile.fileName())){
+                        Logger::instance()->writeRecord(Logger::critical, m_module, Q_FUNC_INFO, QString("ERROR to remove temp file from disk"));
+                        throw std::exception();
+                    }
+                } else {
+                    Logger::instance()->writeRecord(Logger::critical, m_module, Q_FUNC_INFO, QString("ERROR to copy temp file to device"));
+                    throw std::exception();
+                }
+            } else {
+                Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("There's nothing to be exported"));
+                returnValue = true;
+            }
+        }catch(std::exception &e){
+            Logger::instance()->writeRecord(Logger::error, m_module, Q_FUNC_INFO, QString("Erro: %1").arg(e.what()));
+            returnValue = false;
+        }
+    } else {
+        Logger::instance()->writeRecord(Logger::critical, m_module, Q_FUNC_INFO, QString("EXPORT ERROR: Can\'t export to external device"));
+        returnValue = false;
+    }
+
+    // wait five(5) seconds before turn off the red led
+    while(timer.remainingTime() > 0)
+        ;
+    // turns off the red led
+    m_blinkLed->blinkRedLed(0);
+    // turns on the green led
+    m_blinkLed->blinkGreenLed(1);
+
+    // return true only if the data was successfully exported
+    return returnValue;
+}
+
+// Inspect all devices mounted in /media directory and verify if is possible to write into a device. If the device is writable return a path else return an empty string
+QString ExportLocalData::devicePath()
+{
+    QString devicePath("");
+    bool notMatched = true;
+
+    // wait five(5) seconds before write data into device. A secure time to device be already mounted by the system
+    QTimer timer;
+    timer.start(5000);
+    while(timer.remainingTime() > 0)
+        ;
+
+    // cat command
+    QProcess catCom;
+    catCom.start(QString("cat " + m_mounts.fileName()));
+    catCom.waitForFinished(-1);
+
+    QTextStream mountedDev(catCom.readAllStandardOutput());
+
+    // regular expression to use only devices mounted in /media directory
+    QRegularExpression regexCode;
+    regexCode.setPattern("/dev/[a-z]{3}[0-9]{1}?\\s/media/(.*)\\s");
+
+    QString line;
+    while(!mountedDev.atEnd()){
+        line = mountedDev.readLine();
+        QRegularExpressionMatch match = regexCode.match(line);
+
+        if(match.hasMatch()) {
+
+            QString dev(match.captured(0));
+            QStringList infoDevice = dev.split(" ");
+
+            Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("Inspectin device: %1").arg(infoDevice.at(1)));
+            QFileInfo device(infoDevice.at(1));
+            // check if the device found is writable
+            if(device.isWritable()){
+                Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("Using device: %1. Mount point: %2. File System: %3").arg(infoDevice.at(0)).arg(infoDevice.at(1)).arg(infoDevice.at(2)));
+                devicePath = infoDevice.at(1);
+            } else {
+                Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("%1 is not writable").arg(device.fileName()));
+            }
+            notMatched = false;
+        }
+    }
+    // If was not found any device in /media write an info log record
+    if(notMatched)
+        Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("EXPORT ERROR: No media found to export data"));
+
+    // return the path of device to be used. If no device will be used return an empty string
+    return devicePath;
+}
+
+void ExportLocalData::turnOffLed()
+{
+    m_blinkLed->blinkGreenLed(0);
+}
+
+// search for data with non-sync status and export these datas into a temp file. If the file doesn't exist create a file
+bool ExportLocalData::exportToTempFile()
 {
     // functions pointer
     std::function< bool(const QList<Rfiddata *> &) > updateObject;
@@ -69,16 +208,7 @@ bool ExportLocalData::exportToDevice(QString device)
         return false;
     }
 
-    // turns off leds red and green
-    m_blickLed->blinkGreenLed(0);
-    m_blickLed->blinkRedLed(0);
-
-    // turn on red led
-    m_blickLed->blinkRedLed(1);
-
-    QTimer timer;
-    timer.start(5000);
-
+    Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, QString("Exporting to temporary file"));
     Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, QString("Search not synced data"));
 
     /*!
@@ -88,160 +218,78 @@ bool ExportLocalData::exportToDevice(QString device)
      */
     QList< Rfiddata * > list = getDataToExport("sync", Rfiddata::KNotSynced);
 
-    // RAII para eliminar automaticamente os registros do "list" alocados no heap cuando a funcao sai do scope
-    // E criado um shared pointer que guarda o endereco de um std::function< void() > f1 que e chamado para eliminar os registros da list
-    // A funcao std::function< void ( std::function<void()> * ) > f2 e o destructor da f1, a mesma executa a funcao f1 e depois chama o destructor da mesma ja que esta esta alocada no heap.
-    /*!
+    // Verify how many records has to export. If none return true.
+    if(list.length() > 0)
+    {
+        // try to open a file to append the records to be exported. Return false if the file cannot be opened for some reason
+        if (!m_tempFile.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)){
+            Logger::instance()->writeRecord(Logger::error, m_module, Q_FUNC_INFO, QString("Error to open %1").arg(m_tempFile.fileName()));
+            return false;
+        }
+
+        Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("Exporting %1 records to %2").arg(list.length()).arg(m_tempFile.fileName()));
+
+        // RAII para eliminar automaticamente os registros do "list" alocados no heap cuando a funcao sai do scope
+        // E criado um shared pointer que guarda o endereco de um std::function< void() > f1 que e chamado para eliminar os registros da list
+        // A funcao std::function< void ( std::function<void()> * ) > f2 e o destructor da f1, a mesma executa a funcao f1 e depois chama o destructor da mesma ja que esta esta alocada no heap.
+        /*!
      * \brief raii remove the data allocated on heap after leave the scope
      *
      * The shared pointer keeps the address of std::function< void() > f1 function that will be called to delete the list of data
      * std::function< void ( std::function<void()> * ) > f2 function is f1 destructor function and is called once is that allocated on heap
      */
-    QSharedPointer< std::function<void()> > raii;
-    raii = QSharedPointer< std::function< void() > >( new std::function< void() >( [&list] () -> void { qDeleteAll(list); } ),
-                                                      std::function< void ( std::function<void()> * ) > ([] ( std::function<void()> *ptr) { (*ptr)(); delete ptr; }));
+        QSharedPointer< std::function<void()> > raii;
+        raii = QSharedPointer< std::function< void() > >( new std::function< void() >( [&list] () -> void { qDeleteAll(list); } ),
+                                                          std::function< void ( std::function<void()> * ) > ([] ( std::function<void()> *ptr) { (*ptr)(); delete ptr; }));
 
-    bool returnValue = true;
-    try{
-        // export data
-        Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, QString("Exporting to CSV File"));
-        exportCSVData(device, list);
-        Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, QString("Exporting to CSV Legacy File"));
-        exportLegacyCSVData(device, list);
+        // turn on red led
+        m_blinkLed->blinkRedLed(1);
 
-    }catch(std::exception &e){
-        Logger::instance()->writeRecord(Logger::error, m_module, Q_FUNC_INFO, QString("Erro: %1").arg(e.what()));
-        //        qDebug() << e.what();
-        returnValue = false;
-    }
-    // wait five(5) seconds before turn off the red led
-    while(timer.remainingTime() > 0)
-        ;
-    // turns off the red led
-    m_blickLed->blinkRedLed(0);
-    // turns on the green led
-    m_blickLed->blinkGreenLed(1);
+        // Creat a stream to write data into file
+        QTextStream out(&m_tempFile);
 
-    try{
-        // update database
-        Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, QString("Update data base to synced status"));
-        updateObject(list);
-    }catch(std::exception &e){
-        Logger::instance()->writeRecord(Logger::error, m_module, Q_FUNC_INFO, QString("Erro: %1").arg(e.what()));
-        returnValue = false;
-    }
-
-    // return true only if the data was successfully exported
-    return returnValue;
-}
-
-bool ExportLocalData::exportAllNonSyncedRegisters()
-{
-    // lock this section of code so that only one thread can access it at a time.
-    QMutexLocker locker(&m_mutex);
-
-    // wait five(5) seconds before write data into device.
-    QTimer timer;
-    timer.start(5000);
-    while(timer.remainingTime() > 0){
-
-    }
-
-    /*
-     * The directory path where the device is mounted is different on each platform.
-     * So, it is verified if the directory "/media/'USER'/" exists. in negative case, is used the "/media/" directory, without 'USER'.
-     */
-    // Desktop Ubuntu
-    QString dirDesk(QString("/media/") + getenv("USER"));
-    // Raspberry Pi
-    QString dirPi("/media");
-
-    QDir directory(dirDesk);
-    if(!directory.exists()){
-        directory.setPath(dirPi);
-    }
-
-    // after create the directory path for current platform, verify if exists
-    if(directory.exists()){
-        //for each subdirectory, verify if is valid and call the exportToDevice function
-        foreach (QFileInfo path, directory.entryList()){
-            if(!path.baseName().isEmpty()){
-                QString device(QString(directory.path() + "/" + path.fileName()));
-                Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("Using device: %1").arg(device));
-                // call the exportToDevice function with a valid path of device to write data
-                if(exportToDevice(device)){
-                    system("sync");
-                    return true;
-                }
-            }
-        }
-        Logger::instance()->writeRecord(Logger::critical, m_module, Q_FUNC_INFO, QString("EXPORT ERROR: No media found to export on: %1").arg(directory.absolutePath()));
-    }else{
-        Logger::instance()->writeRecord(Logger::critical, m_module, Q_FUNC_INFO, QString("EXPORT ERROR: Mount point not found"));
-    }
-    return false;
-}
-
-void ExportLocalData::exportCSVData(const QString &device, const QList<Rfiddata *> &list) throw(std::exception)
-{
-    // name of file to save on device (absolute path)
-    QString path(device + "/export_" + QDateTime::currentDateTime().toString().replace(" ", "_").replace(":","") + ".fish");
-
-    QFile exportFile(path);
-    if(exportFile.open(QFile::ReadWrite)) { // open file with read and write permission
-        QTextStream stream;
-        stream.setDevice(&exportFile);
-        stream << QString("idpontocoleta,idantena,applicationcode,identificationcode,datetime\n");
-        stream.flush();
-        // idpontocoleta,idantena,applicationcode,identificationcode,datetime
         foreach (Rfiddata *var, list) {
-            stream << QString("%1,%2,%3,%4, \"%5\"\n")
-                      .arg(var->idpontocoleta().toString())
-                      .arg(var->idantena().toString())
-                      .arg(var->applicationcode().toString())
-                      .arg(var->identificationcode().toString())
-                      .arg(var->datetime().toDateTime().toString("yyyy-MM-dd hh:mm:ss"));
+            out << QString("%1,%2,%3,%4, \"%5\"\n")
+                   .arg(var->idpontocoleta().toString())
+                   .arg(var->idantena().toString())
+                   .arg(var->applicationcode().toString())
+                   .arg(var->identificationcode().toString())
+                   .arg(var->datetime().toDateTime().toString("yyyy-MM-dd hh:mm:ss"));
             // write each data from list in file
-            stream.flush();
+            out.flush();
             var->setSync(Rfiddata::KSynced); // change status to synced
         }
         Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, QString("%1 records exported").arg(list.length()));
-        exportFile.close(); // close file
-    }else{
-        throw std::exception();
-    }
-}
 
-void ExportLocalData::exportLegacyCSVData(const QString &device, const QList<Rfiddata *> &list) throw(std::exception)
-{
-    // name of file to save on device (absolute path)
-    QString path(device + "/export_legacy_" + QDateTime::currentDateTime().toString().replace(" ", "_").replace(":","") + ".fish");
-    QFile exportFile(path);
-    if(exportFile.open(QFile::ReadWrite)) {
-        QTextStream stream;
-        stream.setDevice(&exportFile);
+        // close the file
+        m_tempFile.close();
 
-        foreach (Rfiddata *var, list) {
-            // idpontocoleta,idantena,applicationcode,identificationcode,datetime
-            stream << QString("%1,\"%2\",\"%3\"\n")
-                      .arg(var->idantena().toString())
-                      .arg(var->identificationcode().toString())
-                      .arg(var->datetime().toDateTime().toString("yyyy-MM-dd hh:mm:ss"));
-            stream.flush();
-            var->setSync(Rfiddata::KSynced);
+        try{
+            // update database
+            Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, QString("Update data base to synced status"));
+            updateObject(list);
+        }catch(std::exception &e){
+            Logger::instance()->writeRecord(Logger::error, m_module, Q_FUNC_INFO, QString("Erro: %1").arg(e.what()));
+            return false;
         }
-        Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, QString("%1 records exported").arg(list.length()));
-        exportFile.close();
-    }else{
-        throw std::exception();
+
+        // Turn off the red LED after 1 second
+        QTimer timer;
+        timer.start(1000);
+        while(timer.remainingTime() > 0)
+            ;
+        // turn off red led
+        m_blinkLed->blinkRedLed(0);
+
+    } else {
+        Logger::instance()->writeRecord(Logger::debug, m_module, Q_FUNC_INFO, "No records to be exported");
     }
+
+    // If all made successfully return true.
+    return true;
 }
 
-void ExportLocalData::turnOffLed()
-{
-    m_blickLed->blinkGreenLed(0);
-}
-
+// Return a single instance of the class
 ExportLocalData *ExportLocalData::instance()
 {
     // if already exist a instance of this class, returns. otherwise get a new instance
@@ -251,3 +299,11 @@ ExportLocalData *ExportLocalData::instance()
     }
     return singleton;
 }
+
+/* -- This class will be transformed in thread
+// Start thread.
+void ExportLocalData::run()
+{
+    ExportLocalData::instance();
+}
+*/
