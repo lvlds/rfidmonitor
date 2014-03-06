@@ -78,14 +78,9 @@ public slots:
      *
      * \sa devicePath()
      */
-    bool exportToDevice();
+    bool exportToDevice(QString device);
 
 private:
-    /*!
-     * \brief devicePath inspect all devices mounted in /media directory and verify if is possible to write into a device. If the device is writable return a path to device else return an empty string.
-     * \return the path of device to copy data into.
-     */
-    QString devicePath();
 
     // Name of the module. Is used to write log records
     QString m_module;
@@ -98,8 +93,6 @@ private:
      */
     QTimer *m_exportTime;
 
-    // file /proc/mounts.
-    QFile m_mounts;
     // Define the temporary file to export data
     QFile m_tempFile;
     QMutex m_mutex;

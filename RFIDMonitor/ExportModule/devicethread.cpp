@@ -61,13 +61,22 @@
 
 #include <QDebug>
 
+#include <QProcess>
+#include <QFileInfo>
+#include <QRegularExpression>
+
 #include "devicethread.h"
 #include "export/exportlocaldata.h"
 
+/*!
+ * \brief DeviceThread is responsible for listening if a device is connected or disconnected.
+ * When a device is connected it will verify and figure out the device's path and call a function to export data into the device.
+ *
+ * \param parent
+ */
 DeviceThread::DeviceThread(QObject *parent) :
     QThread(parent)
 {
-    m_module = "ExportModule";
     setObjectName("DeviceThread");
 }
 
@@ -82,13 +91,71 @@ DeviceThread *DeviceThread::instance()
 }
 
 /*!
- * \brief deviceAddedCallback function is called when a new device is connected in computer
+ * \brief deviceAddedCallback function is called when a new device is connected in computer.
+ * Also inspect all devices mounted in /media directory and verify if is possible to write into a device and called exportToDevice function in ExportLocalData thread.
+ * If the device is writable, passes (like parameter) a path to device or passes an empty string.
+ *
+ * \sa exportToDevice
  */
 void deviceAddedCallback(const char *)
 {
-    Logger::instance()->writeRecord(Logger::info, "ExportModule", Q_FUNC_INFO, "Device Detected");
+
+    QString m_module("ExportModule");
+    QFile m_mounts;
+    m_mounts.setFileName("/proc/mounts");
+
+    Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, "Device Detected");
+
+    QString devicePath("");
+    bool notMatched = true;
+
+    // wait five(5) seconds before write data into device. A secure time to device be already mounted by the system
+    QTimer timer;
+    timer.start(5000);
+    while(timer.remainingTime() > 0)
+        ;
+
+    // cat command
+    QProcess catCom;
+    catCom.start(QString("cat " + m_mounts.fileName()));
+    catCom.waitForFinished(-1);
+
+    QTextStream mountedDev(catCom.readAllStandardOutput());
+
+    // regular expression to use only devices mounted in /media directory
+    QRegularExpression regexCode;
+    regexCode.setPattern("/dev/[a-z]{3}[0-9]{1}?\\s/media/(.*)\\s");
+
+    QString line;
+    while(!mountedDev.atEnd()){
+        line = mountedDev.readLine();
+        QRegularExpressionMatch match = regexCode.match(line);
+
+        if(match.hasMatch()) {
+
+            QString dev(match.captured(0));
+            QStringList infoDevice = dev.split(" ");
+
+            Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("Inspectin device: %1").arg(infoDevice.at(1)));
+            QFileInfo device(infoDevice.at(1));
+            // check if the device found is writable
+            if(device.isWritable()){
+                Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("Using device: %1. Mount point: %2. File System: %3").arg(infoDevice.at(0)).arg(infoDevice.at(1)).arg(infoDevice.at(2)));
+                devicePath = infoDevice.at(1);
+            } else {
+                Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("%1 is not writable").arg(device.fileName()));
+            }
+            notMatched = false;
+        }
+    }
+    // If was not found any device in /media write an info log record
+    if(notMatched)
+        Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("EXPORT ERROR: No media found to export data"));
+
+    qDebug() << devicePath;
+
     // call function responsible to export data to device just connected
-    ExportLocalData::instance()->exportToDevice();
+    ExportLocalData::instance()->exportToDevice(devicePath);
 }
 
 /*!

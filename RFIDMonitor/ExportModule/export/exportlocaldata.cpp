@@ -65,12 +65,10 @@ ExportLocalData::ExportLocalData(QObject *parent) :
     // When the timeout signal is emitted the export action slot is called (exportAction when do not receive parameters uses a default value and then export data to temp file)
     QObject::connect(m_exportTime, SIGNAL(timeout()), this, SLOT(exportToTempFile()));
     m_exportTime->start();
-
-    m_mounts.setFileName("/proc/mounts");
 }
 
 // Export temporary file to an external device.
-bool ExportLocalData::exportToDevice()
+bool ExportLocalData::exportToDevice(QString device)
 {
     // turns off leds red and green
     m_blinkLed->blinkGreenLed(0);
@@ -84,8 +82,6 @@ bool ExportLocalData::exportToDevice()
     QTimer timer;
     timer.start(5000);
 
-    // get device path to export file.
-    QString device = devicePath();
     // if device path is empty there's no device capable to recive the file
     if(!device.isEmpty()){
         try{
@@ -129,59 +125,6 @@ bool ExportLocalData::exportToDevice()
 
     // return true only if the data was successfully exported
     return returnValue;
-}
-
-// Inspect all devices mounted in /media directory and verify if is possible to write into a device. If the device is writable return a path else return an empty string
-QString ExportLocalData::devicePath()
-{
-    QString devicePath("");
-    bool notMatched = true;
-
-    // wait five(5) seconds before write data into device. A secure time to device be already mounted by the system
-    QTimer timer;
-    timer.start(5000);
-    while(timer.remainingTime() > 0)
-        ;
-
-    // cat command
-    QProcess catCom;
-    catCom.start(QString("cat " + m_mounts.fileName()));
-    catCom.waitForFinished(-1);
-
-    QTextStream mountedDev(catCom.readAllStandardOutput());
-
-    // regular expression to use only devices mounted in /media directory
-    QRegularExpression regexCode;
-    regexCode.setPattern("/dev/[a-z]{3}[0-9]{1}?\\s/media/(.*)\\s");
-
-    QString line;
-    while(!mountedDev.atEnd()){
-        line = mountedDev.readLine();
-        QRegularExpressionMatch match = regexCode.match(line);
-
-        if(match.hasMatch()) {
-
-            QString dev(match.captured(0));
-            QStringList infoDevice = dev.split(" ");
-
-            Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("Inspectin device: %1").arg(infoDevice.at(1)));
-            QFileInfo device(infoDevice.at(1));
-            // check if the device found is writable
-            if(device.isWritable()){
-                Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("Using device: %1. Mount point: %2. File System: %3").arg(infoDevice.at(0)).arg(infoDevice.at(1)).arg(infoDevice.at(2)));
-                devicePath = infoDevice.at(1);
-            } else {
-                Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("%1 is not writable").arg(device.fileName()));
-            }
-            notMatched = false;
-        }
-    }
-    // If was not found any device in /media write an info log record
-    if(notMatched)
-        Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("EXPORT ERROR: No media found to export data"));
-
-    // return the path of device to be used. If no device will be used return an empty string
-    return devicePath;
 }
 
 void ExportLocalData::turnOffLed()

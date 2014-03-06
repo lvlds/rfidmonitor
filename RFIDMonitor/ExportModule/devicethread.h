@@ -47,9 +47,6 @@ public:
      * \brief the run function starts this thread that will listen device connections
      */
     void run();
-
-private:
-    QString m_module;
 };
 
 #endif // DEVICETHREAD_H
