@@ -31,36 +31,53 @@
 #include "exportmodule.h"
 #include "export/exportlocaldata.h"
 
-static DeviceThread *g_thread = 0;
+static QThread *m_exportThread = 0;
+static QThread *m_daemonThread = 0;
+static ExportLocalData *m_exporter = 0;
 
 /*!
- * \brief start_daemon start Thread to detect new devices to export data
+ * \brief start_daemon starts Threads to detect new devices to export data into it and a thread to export the data.
  */
 void start_daemon(){
+    /*
+     * Creates the object of the classes and then move these objects to execute as thread.
+     * Make the connection between threads. Starts both threads.
+     */
+    m_exportThread = new QThread();
+    m_exporter = new ExportLocalData();
 
-    // only start a new thread if this is not already started
-    if(!g_thread){
-        Logger::instance()->writeRecord(Logger::error, "ExportModule", Q_FUNC_INFO, QString("Starting device thread"));
-        g_thread = new DeviceThread; 
-        g_thread->start();
-    }
+    m_exporter->moveToThread(m_exportThread);
+    QObject::connect(m_exportThread, SIGNAL(started()), m_exporter, SLOT(startExport()));
+
+    m_daemonThread = new QThread();
+
+    DeviceThread::instance()->moveToThread(m_daemonThread);
+    QObject::connect(m_daemonThread, SIGNAL(started()), DeviceThread::instance(), SLOT(startListening()));
+    QObject::connect(DeviceThread::instance(), SIGNAL(exportToDevice(QString)), m_exporter, SLOT(exportAction(QString)));
+    QObject::connect(DeviceThread::instance(), SIGNAL(redLedOff()), m_exporter, SLOT(turnOffLed()));
+
+    m_exportThread->start();
+    m_daemonThread->start();
 }
 
 ExportModule::ExportModule(QObject *parent) :
-    CoreModule(parent)
+    CoreModule(parent), m_exportThread(0)
 {
 
-    /* create a unique instance for the class ExportLocalData, that will be called from DeviceThread class.
-    * If not do this, will get an error when the DeviceThread class try use an instance of ExportLocalData, because
-    * is trying to create an object from ExportLocalData class into a thread that is child of the thread that is owner of the ExportLocalData class, so this is not possible
-    */
-    ExportLocalData::instance();
 }
 
 ExportModule::~ExportModule()
 {
-    g_thread->exit(0); // stop and exit the thread
-    g_thread->deleteLater(); // delete the thread from memory
+    /* First stop the thread. For second delete the object running on the thread.
+     * And then delete the thread.
+     */
+    m_exportThread->exit(0);
+    m_exporter->deleteLater();
+    m_exportThread->deleteLater();
+
+    m_daemonThread->exit(0);
+    m_device->deleteLater();
+    m_daemonThread->deleteLater();
 }
 
 void ExportModule::init()

@@ -52,6 +52,13 @@ public:
     void init();
 
     QString m_module;
+
+private:
+    QThread *m_daemonThread;
+    QThread *m_exportThread;
+    ExportLocalData *m_exporter;
+    DeviceThread *m_device;
+
 };
 
 #endif // EXPORTMODULE_H

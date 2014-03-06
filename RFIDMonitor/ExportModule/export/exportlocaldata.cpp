@@ -50,20 +50,20 @@ ExportLocalData::ExportLocalData(QObject *parent) :
     QObject(parent),
     m_blinkLed(0)
 {
-    // Time that define the interval to export data to temporary file
-    int exportTime = 1000*10;
-
     m_module = "ExportModule";
     m_blinkLed = new BlinkLed(this);
 
     // Object to manipulate file
     m_tempFile.setFileName(QCoreApplication::applicationDirPath() + "/TempExport.fish");
+}
 
+void ExportLocalData::startExport()
+{
     // Timer to export data to temporary file
     m_exportTime = new QTimer(this);
     m_exportTime->setInterval(exportTime);
     // When the timeout signal is emitted the export action slot is called (exportAction when do not receive parameters uses a default value and then export data to temp file)
-    QObject::connect(m_exportTime, SIGNAL(timeout()), this, SLOT(exportToTempFile()));
+    QObject::connect(m_exportTime, SIGNAL(timeout()), this, SLOT(exportAction()));//exportToTempFile()));
     m_exportTime->start();
 }
 
@@ -127,6 +127,18 @@ bool ExportLocalData::exportToDevice(QString device)
     return returnValue;
 }
 
+void ExportLocalData::exportAction(QString path)
+{
+    QMutexLocker locker(&m_mutex);
+
+    if(path.compare("temp")){
+        exportToDevice(path);
+    } else {
+        exportToTempFile();
+    }
+}
+
+// SLOT
 void ExportLocalData::turnOffLed()
 {
     m_blinkLed->blinkGreenLed(0);
@@ -231,22 +243,3 @@ bool ExportLocalData::exportToTempFile()
     // If all made successfully return true.
     return true;
 }
-
-// Return a single instance of the class
-ExportLocalData *ExportLocalData::instance()
-{
-    // if already exist a instance of this class, returns. otherwise get a new instance
-    static ExportLocalData *singleton = 0;
-    if(!singleton){
-        singleton = new ExportLocalData(qApp);
-    }
-    return singleton;
-}
-
-/* -- This class will be transformed in thread
-// Start thread.
-void ExportLocalData::run()
-{
-    ExportLocalData::instance();
-}
-*/

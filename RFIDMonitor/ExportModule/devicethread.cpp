@@ -75,7 +75,7 @@
  * \param parent
  */
 DeviceThread::DeviceThread(QObject *parent) :
-    QThread(parent)
+    QObject(parent)
 {
     setObjectName("DeviceThread");
 }
@@ -85,21 +85,20 @@ DeviceThread *DeviceThread::instance()
     // if already exist a instance of this class, returns. otherwise get a new instance
     static DeviceThread *instance = 0;
     if(! instance){
-        instance = new DeviceThread(qApp);
+        instance = new DeviceThread();
     }
     return instance;
 }
 
 /*!
  * \brief deviceAddedCallback function is called when a new device is connected in computer.
- * Also inspect all devices mounted in /media directory and verify if is possible to write into a device and called exportToDevice function in ExportLocalData thread.
+ * Also inspect all devices mounted in /media directory and verify if is possible to write into a device and emit the exportToDevice signal and pass the path by parameter.
  * If the device is writable, passes (like parameter) a path to device or passes an empty string.
  *
  * \sa exportToDevice
  */
 void deviceAddedCallback(const char *)
 {
-
     QString m_module("ExportModule");
     QFile m_mounts;
     m_mounts.setFileName("/proc/mounts");
@@ -152,10 +151,8 @@ void deviceAddedCallback(const char *)
     if(notMatched)
         Logger::instance()->writeRecord(Logger::info, m_module, Q_FUNC_INFO, QString("EXPORT ERROR: No media found to export data"));
 
-    qDebug() << devicePath;
-
     // call function responsible to export data to device just connected
-    ExportLocalData::instance()->exportToDevice(devicePath);
+    emit DeviceThread::instance()->exportToDevice(devicePath);
 }
 
 /*!
@@ -165,7 +162,7 @@ void deviceRemovedCallback()
 {
     Logger::instance()->writeRecord(Logger::info, "ExportModule", Q_FUNC_INFO, "Device Removed");
     // turn off green led when a device is removed
-    ExportLocalData::instance()->turnOffLed();
+    emit DeviceThread::instance()->turnLedOff();
 }
 
 void writeLog(const char *str)
@@ -318,7 +315,7 @@ void start_listening(void (*callback)(const char *), void (*rmCallback)(void), v
 }
 }
 
-void DeviceThread::run()
+void DeviceThread::startListening()
 {
     // calls the function to listening device connections
     start_listening(&deviceAddedCallback, &deviceRemovedCallback, &writeLog);

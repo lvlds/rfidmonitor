@@ -30,11 +30,11 @@
 
 /*!
 * \class ExportLocalData
-* \brief The ExportLocalData class is responsible to get the non synced data from database, and export it to a temporary file and to device.
+* \brief The ExportLocalData class is responsible to get the non synced data from database, and export it to a temporary file and into an external device.
 *
-* The ExportLocalData class has as objectives:
+* The ExportLocalData class have as objectives:
 * get the non-synced data from the database and write it into a temporary file.
-* When a device is connected it will find the path to the device just connected to the computer, copy the temporary file into the device and delete the file from local disk,
+* When a device is connected it will copy the temporary file into the device and delete the file from local disk,
 * change the sync flag of the temporary registers and then update the database with their current values.
 * While the program is writing the exported data in the device, the application turns the red led on,
 * after writing all the data the red led are turned off and the green led on until remove the device.
@@ -46,6 +46,7 @@
 #include <QMutex>
 #include <QObject>
 #include <QTimer>
+#include <QThread>
 
 class BlinkLed;
 class Rfiddata;
@@ -54,42 +55,47 @@ class ExportLocalData : public QObject
 {
     Q_OBJECT
 public:
-    /*!
-     * \brief instance is the singleton
-     * \return the unique instance of the ExportLocalData class
-     */
-    static ExportLocalData * instance();
+    explicit ExportLocalData(QObject *parent = 0);
 
+public slots:
     /*!
      * \brief turnOffLed turns the green led off
      */
     void turnOffLed();
 
-public slots:
+    /*!
+     * \brief exportAction is slot that defines if the data must be export to a temporary file or into an external device.
+     * If an string quals to 'temp' is received by parameter, then calls exportToTempFile() function. Otherwise, calls export to exportToDevice() function and passes the device's path to it.
+     *
+     * \param path. Device's path to export data. If equals 'temp' export to temporary file.
+     * \sa exportToDevice() exportToTempFile()
+     */
+    void exportAction(QString path = "temp");
 
+    /*!
+     * \brief startExport is the function that starts this class like thread and starts a QTimer to export temporary file
+     */
+    void startExport();
+
+private:
     /*!
      * \brief When a QTimer emmit a timeoutr signal this function is called to export the non sync data into a temporary file. It will search for data and if existe non cync data it will export to file and return. Just return, otherwise.
      */
     bool exportToTempFile();
 
     /*!
-     * \brief exportToDevice call devicePath() funtion to take the path of device to copy file into it.
+     * \brief exportToDevice receive device's path to copy file into it.
      * Once the data is successfully exported, it will delete the temporary file from local disk.
-     *
-     * \sa devicePath()
      */
     bool exportToDevice(QString device);
 
-private:
-
     // Name of the module. Is used to write log records
     QString m_module;
-    explicit ExportLocalData(QObject *parent = 0);
 
     /*!
-     * \brief m_exportTime is a QTimer that defines the interval of exportation to temp file. The timeout signal is connected to exportToTempFile() slot.
+     * \brief m_exportTime is a QTimer that defines the interval of exportation to temp file. The timeout signal is connected to exportAction() slot.
      *
-     * \sa exportToTempFile()
+     * \sa exporAction()
      */
     QTimer *m_exportTime;
 
@@ -101,6 +107,9 @@ private:
      * \brief m_blickLed is an object to manipulate the green and red leds, which are used to show to the user the status of process
      */
     BlinkLed *m_blinkLed;
+
+    // Time that define the interval to export data to temporary file
+    int exportTime = 1000*10;
 };
 
 #endif // EXPORTLOCALDATA_H
