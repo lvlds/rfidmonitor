@@ -109,7 +109,7 @@ private:
     BlinkLed *m_blinkLed;
 
     // Time that define the interval to export data to temporary file
-    int exportTime = 1000*10;
+    int exportTime = 1000*60;
 };
 
 #endif // EXPORTLOCALDATA_H

@@ -1,6 +1,7 @@
 #include <QDebug>
 #include <QDateTime>
 #include <QSharedPointer>
+#include <QCoreApplication>
 
 #include "logger.h"
 
@@ -21,7 +22,7 @@ Logger::Logger(QObject *parent):
 //            << expr::attr< std::string >("Function") << " % "
 //            << expr::smessage;
 
-    file.setFileName("RFID_log.log");
+    file.setFileName(QCoreApplication::applicationDirPath() + "RFID_log.log");
         if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)){
             return;
         }

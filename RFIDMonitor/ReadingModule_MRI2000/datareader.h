@@ -50,9 +50,10 @@ public:
     bool startReading(const QString &device);
 private:
     QString m_module;
-    QTextStream m_outHardCapture;
-    QTextStream m_outMatchedCapture;
     QSerialPort *m_serial;
+
+//    QTextStream m_outHardCapture;
+//    QTextStream m_outMatchedCapture;
 
 public slots:
     void readData();

@@ -54,7 +54,7 @@ void start_daemon(){
     DeviceThread::instance()->moveToThread(m_daemonThread);
     QObject::connect(m_daemonThread, SIGNAL(started()), DeviceThread::instance(), SLOT(startListening()));
     QObject::connect(DeviceThread::instance(), SIGNAL(exportToDevice(QString)), m_exporter, SLOT(exportAction(QString)));
-    QObject::connect(DeviceThread::instance(), SIGNAL(redLedOff()), m_exporter, SLOT(turnOffLed()));
+    QObject::connect(DeviceThread::instance(), SIGNAL(turnLedOff()), m_exporter, SLOT(turnOffLed()));
 
     m_exportThread->start();
     m_daemonThread->start();

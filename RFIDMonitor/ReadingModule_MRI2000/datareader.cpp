@@ -48,8 +48,8 @@
 #include <servicemanager.h>
 
 
-QFile file_hard("captured_hard.txt");
-QFile file_matched("captured_matched.txt");
+//QFile file_hard("captured_hard.txt");
+//QFile file_matched("captured_matched.txt");
 
 DataReader::DataReader(QObject *parent) :
     QObject(parent),
@@ -61,12 +61,12 @@ DataReader::DataReader(QObject *parent) :
     connect(m_serial, SIGNAL(error(QSerialPort::SerialPortError)), SLOT(handleError(QSerialPort::SerialPortError)));
 
 
-    if (file_hard.open(QFile::WriteOnly | QFile::Append)){
-        m_outHardCapture.setDevice(&file_hard);
-    }
-    if (file_matched.open(QFile::WriteOnly | QFile::Append)){
-        m_outMatchedCapture.setDevice(&file_matched);
-    }
+//    if (file_hard.open(QFile::WriteOnly | QFile::Append)){
+//        m_outHardCapture.setDevice(&file_hard);
+//    }
+//    if (file_matched.open(QFile::WriteOnly | QFile::Append)){
+//        m_outMatchedCapture.setDevice(&file_matched);
+//    }
 }
 
 DataReader::~DataReader()
@@ -102,10 +102,10 @@ void DataReader::readData()
 
         QString hardData(buffer);
 
-        if(m_outHardCapture.device()){
-            m_outHardCapture << hardData;
-            m_outHardCapture.flush();
-        }
+//        if(m_outHardCapture.device()){
+//            m_outHardCapture << hardData;
+//            m_outHardCapture.flush();
+//        }
 
         hardData.remove(QRegExp("[\\n\\t\\r]"));
 
@@ -117,10 +117,10 @@ void DataReader::readData()
 
             //Here the matched string must be like "TAG5W 001 0000000295901506"
 
-            if(m_outMatchedCapture.device()){
-                m_outMatchedCapture << match.captured(0);
-                m_outMatchedCapture.flush();
-            }
+//            if(m_outMatchedCapture.device()){
+//                m_outMatchedCapture << match.captured(0);
+//                m_outMatchedCapture.flush();
+//            }
 
             Rfiddata *data = new Rfiddata(this);
 
