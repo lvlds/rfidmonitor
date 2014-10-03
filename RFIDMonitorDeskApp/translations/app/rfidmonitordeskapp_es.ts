@@ -6,48 +6,48 @@
     <message>
         <location filename="../../gui/mainwindow.ui" line="14"/>
         <source>RFIDMonitor Desktop</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../../gui/mainwindow.ui" line="50"/>
         <source>1- Select the connection type:</source>
-        <translation type="unfinished"></translation>
+        <translation>Selecciona el tipo de conexion:</translation>
     </message>
     <message>
         <location filename="../../gui/mainwindow.ui" line="57"/>
         <source>Network</source>
-        <translation type="unfinished"></translation>
+        <translation>Red</translation>
     </message>
     <message>
         <location filename="../../gui/mainwindow.ui" line="73"/>
         <source>Serial</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../../gui/mainwindow.ui" line="36"/>
         <location filename="../../gui/mainwindow.ui" line="110"/>
         <source>Connection Configuration</source>
-        <translation type="unfinished"></translation>
+        <translation>Configuracion de la conexion</translation>
     </message>
     <message>
         <location filename="../../gui/mainwindow.ui" line="132"/>
         <source>Connection</source>
-        <translation type="unfinished"></translation>
+        <translation>Conexion</translation>
     </message>
     <message>
         <location filename="../../gui/mainwindow.ui" line="180"/>
         <source>Close Connection</source>
-        <translation type="unfinished"></translation>
+        <translation>Cerrar conexion</translation>
     </message>
     <message>
         <location filename="../../gui/mainwindow.cpp" line="22"/>
         <source>System started.</source>
-        <translation type="unfinished"></translation>
+        <translation>Sistema iniciado.</translation>
     </message>
     <message>
         <location filename="../../gui/mainwindow.cpp" line="65"/>
         <source>System closed normaly.</source>
-        <translation type="unfinished"></translation>
+        <translation>Sistema cerrado normalmente.</translation>
     </message>
 </context>
 <context>
@@ -55,104 +55,104 @@
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="154"/>
         <source>Waiting for connections on %1:%2</source>
-        <translation type="unfinished"></translation>
+        <translation>Esperando por conexiones en %1: %2</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="48"/>
         <location filename="../../communication/networkcommunication.cpp" line="63"/>
         <source>Socket is not open.</source>
-        <translation type="unfinished"></translation>
+        <translation>El socket no esta abierto.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="92"/>
         <source>ACK-UNKNOWN Received. ERROR INFO [%1] ORIGINAL MESSAGE [%2]</source>
-        <translation type="unfinished"></translation>
+        <translation></translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="190"/>
         <source>Stopped searching for new rasps.</source>
-        <translation type="unfinished"></translation>
+        <translation>Parando la busqueda por nuevos raspberries.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="213"/>
         <source>Message sent -&gt; SIZE [%1] MESSAGE[%2]</source>
-        <translation type="unfinished"></translation>
+        <translation>Mensaje enviado -&gt; TAMANO [%1] MENSAJE [%2]</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="226"/>
         <location filename="../../communication/networkcommunication.cpp" line="232"/>
         <source>Failed to write bytes to the socket!!!</source>
-        <translation type="unfinished"></translation>
+        <translation>Ha ocurrido un error al enviar bytes al socket!!!</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="239"/>
         <source>Cannot send data. The socket is closed.</source>
-        <translation type="unfinished"></translation>
+        <translation>No se puede enviar datos. El socket esta cerrado.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="264"/>
         <source>Failed to connect to rasp.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ha hallado la conexion con el raspberry.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="355"/>
         <source>Data type invalid.</source>
-        <translation type="unfinished"></translation>
+        <translation>Tip de dato invalido.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="158"/>
         <source>Cannot find a valid address to start the server.</source>
-        <translation type="unfinished"></translation>
+        <translation>No se ha podido encontrar una direccion valida para iniciar el servidor.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="166"/>
         <source>Cannot start searching.</source>
-        <translation type="unfinished"></translation>
+        <translation>No se puede iniciar la busqueda.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="259"/>
         <source>Successfully connect to rasp.</source>
-        <translation type="unfinished"></translation>
+        <translation>Se ha establecido una conexion con exito con el raspberry.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="363"/>
         <source>Invalid json. DATA [%1]</source>
-        <translation type="unfinished"></translation>
+        <translation>JSON invalido. DATO [%1]</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="381"/>
         <source>The remote device closed the connection.</source>
-        <translation type="unfinished"></translation>
+        <translation>El dispositivo remoto ha cerrado la conexion.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="387"/>
         <source>The remote device was not found. Please check the host address and port settings.</source>
-        <translation type="unfinished"></translation>
+        <translation>El dispositivo remoto no fue encontrado. Por favor verifica la direccion del host yla informacion de puertas del mismo.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="394"/>
         <source>The connection was refused by the peer. Make sure the application on the remote device is running, and check that the host address and port settings are correct.</source>
-        <translation type="unfinished"></translation>
+        <translation>La conexion fue rechazada por el punto. Asegurese de que la aplicacion esta siendo ejecutada en el dispositivo remoto, y verifica que la direccion del host y las puertas del mismo sean correctas.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="403"/>
         <source>Connection error: %1.</source>
-        <translation type="unfinished"></translation>
+        <translation>Error de conexion: %1.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="435"/>
         <source>New connection arrived.</source>
-        <translation type="unfinished"></translation>
+        <translation>Ha llegado una nueva conexion.</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="449"/>
         <source>Disconnected from %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Desconectado de: %1</translation>
     </message>
     <message>
         <location filename="../../communication/networkcommunication.cpp" line="461"/>
         <source>The device of IP %1 didn&apos;t handshake, so the connection is now closed.</source>
-        <translation type="unfinished"></translation>
+        <translation>El dispositivo con IP %1 no ha realizado el handshake, la conexion esta ahora cerrada.</translation>
     </message>
 </context>
 <context>
@@ -723,42 +723,42 @@ PS: The network configuration has changed. If the IP is part of a different netw
     <message>
         <location filename="../../gui/systemmessageswidget.ui" line="20"/>
         <source>System Messages</source>
-        <translation type="unfinished"></translation>
+        <translation>Mensajes del sistema</translation>
     </message>
     <message>
         <location filename="../../gui/systemmessageswidget.ui" line="46"/>
         <source>System Info</source>
-        <translation type="unfinished"></translation>
+        <translation>Informacion del sistema</translation>
     </message>
     <message>
         <location filename="../../gui/systemmessageswidget.cpp" line="66"/>
         <source>ERROR</source>
-        <translation type="unfinished"></translation>
+        <translation>ERROR</translation>
     </message>
     <message>
         <location filename="../../gui/systemmessageswidget.cpp" line="70"/>
         <source>INFORMATIVE</source>
-        <translation type="unfinished"></translation>
+        <translation>INFORMATIVO</translation>
     </message>
     <message>
         <location filename="../../gui/systemmessageswidget.cpp" line="74"/>
         <source>WARNING</source>
-        <translation type="unfinished"></translation>
+        <translation>AVISO</translation>
     </message>
     <message>
         <location filename="../../gui/systemmessageswidget.cpp" line="78"/>
         <source>FATAL ERROR</source>
-        <translation type="unfinished"></translation>
+        <translation>ERROR FATAL</translation>
     </message>
     <message>
         <location filename="../../gui/systemmessageswidget.cpp" line="82"/>
         <source>DEBUG</source>
-        <translation type="unfinished"></translation>
+        <translation>DEPURACION</translation>
     </message>
     <message>
         <location filename="../../gui/systemmessageswidget.cpp" line="85"/>
         <source>UNKNOW MESSAGE LEVEL</source>
-        <translation type="unfinished"></translation>
+        <translation>NIVEL DE MENSAJE DESCONOCIDO</translation>
     </message>
 </context>
 </TS>
